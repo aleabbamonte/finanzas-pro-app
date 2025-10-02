@@ -1,0 +1,1137 @@
+    <!-- Modal Ayuda -->
+    <div id="modalAyuda" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Bienvenido a Finanzas Pro<br><small style="font-size:16px;font-weight:400;color:var(--text-light);">by Auratech™</small></div>
+            <div class="modal-body">
+                <p><strong>Tu asistente financiero profesional:</strong></p>
+                <ul>
+                    <li>📊 Visualiza tu situación financiera en tiempo real</li>
+                    <li>💰 Controla ingresos, gastos fijos y variables</li>
+                    <li>💳 Gestiona compras en cuotas y préstamos</li>
+                    <li>🎯 Define metas de ahorro y presupuestos</li>
+                    <li>📈 Proyecta tu futuro financiero</li>
+                    <li>🔔 Recibe alertas inteligentes personalizadas</li>
+                    <li>💵 Registra gastos en USD convertidos automáticamente a ARS</li>
+                </ul>
+                <p><strong>💡 Consejos:</strong></p>
+                <ul>
+                    <li>Actualiza el tipo de cambio USD en el panel de Resumen</li>
+                    <li>Exporta tus datos regularmente como respaldo</li>
+                    <li>Revisa las alertas para mantener finanzas saludables</li>
+                    <li>Usa la proyección para planificar a futuro</li>
+                </ul>
+                <p style="text-align:center;color:var(--primary);font-weight:600;margin-top:18px;">Tu éxito financiero comienza aquí</p>
+            </div>
+            <button class="btn btn-primary" onclick="app.cerrarAyuda()" style="display:block;margin:20px auto 0;padding:12px 32px;">Comenzar</button>
+        </div>
+    </div>
+    
+    <script>
+        const app = {
+            meses: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+            cat: {
+                ing: ['💼 Sueldo','💻 Freelance','📈 Inversiones','🏠 Alquiler','🛍️ Ventas','🎁 Regalo','💰 Otros'],
+                fij: ['🏠 Vivienda','💡 Servicios','📺 Suscripciones','🛡️ Seguros','🚗 Transporte','📚 Educación','📌 Otros'],
+                var: ['🍽️ Alimentación','🚌 Transporte','🎬 Entretenimiento','⚕️ Salud','👕 Ropa','💄 Belleza','🐾 Mascotas','🎁 Regalos','🛍️ Otros']
+            },
+            tabs: [
+                {id:'resumen', name:'📊 Resumen', subs:null},
+                {id:'gestion', name:'💰 Gestión', subs:[
+                    {id:'ingresos', name:'💵 Ingresos'},
+                    {id:'fijos', name:'🏠 Gastos Fijos'},
+                    {id:'variables', name:'🛒 Gastos Variables'}
+                ]},
+                {id:'deudas', name:'💳 Deudas', subs:[
+                    {id:'tarjetas', name:'💳 Tarjetas'},
+                    {id:'prestamos', name:'🏦 Préstamos'}
+                ]},
+                {id:'metas', name:'🎯 Metas', subs:[
+                    {id:'ahorros', name:'🐷 Ahorros'},
+                    {id:'presupuestos', name:'🎯 Presupuestos'}
+                ]},
+                {id:'analisis', name:'📈 Análisis', subs:null},
+                {id:'historial', name:'📜 Historial', subs:null}
+            ],
+            activeTab: 'resumen',
+            activeSub: null,
+            datos: { ing:{}, fij:{}, var:{}, tar:[], pre:[], metas:{}, aho:{}, pres:{}, hist:[], tipoCambio: 1350 },
+            
+            formatearPesos(num) {
+                return new Intl.NumberFormat('es-AR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(num);
+            },
+            
+            convertirARS(monto, moneda) {
+                if (moneda === 'USD') {
+                    return monto * this.datos.tipoCambio;
+                }
+                return monto;
+            },
+            
+            guardarTipoCambio() {
+                const tc = parseFloat(document.getElementById('tipoCambio').value);
+                if (tc && tc > 0) {
+                    this.datos.tipoCambio = tc;
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            init() {
+                const hoy = new Date();
+                this.llenarSelects();
+                document.getElementById('mesActual').value = hoy.getMonth();
+                document.getElementById('anioActual').value = hoy.getFullYear();
+                document.getElementById('tar-fecha').valueAsDate = hoy;
+                this.crearTabs();
+                this.cargarDatos();
+                document.getElementById('tipoCambio').value = this.datos.tipoCambio;
+                this.actualizar();
+                if (!localStorage.getItem('aura_visited')) {
+                    setTimeout(() => this.mostrarAyuda(), 500);
+                    localStorage.setItem('aura_visited', '1');
+                }
+            },
+            
+            crearTabs() {
+                const tabsC = document.getElementById('tabsContainer');
+                const subsC = document.getElementById('subtabsContainer');
+                
+                this.tabs.forEach((tab, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `tab ${i===0?'active':''}`;
+                    btn.textContent = tab.name;
+                    btn.onclick = () => this.cambiarTab(tab.id, tab.subs);
+                    tabsC.appendChild(btn);
+                    
+                    if (tab.subs) {
+                        const subDiv = document.createElement('div');
+                        subDiv.className = 'subtabs';
+                        subDiv.id = `subtabs-${tab.id}`;
+                        tab.subs.forEach((sub, j) => {
+                            const subBtn = document.createElement('button');
+                            subBtn.className = `subtab ${j===0?'active':''}`;
+                            subBtn.textContent = sub.name;
+                            subBtn.onclick = () => this.cambiarSubTab(tab.id, sub.id, subBtn);
+                            subDiv.appendChild(subBtn);
+                        });
+                        subsC.appendChild(subDiv);
+                    }
+                });
+            },
+            
+            cambiarTab(id, subs) {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.subtabs').forEach(s => s.classList.remove('active'));
+                
+                event.target.classList.add('active');
+                this.activeTab = id;
+                
+                if (subs) {
+                    document.getElementById(`subtabs-${id}`).classList.add('active');
+                    const firstSub = subs[0].id;
+                    this.activeSub = firstSub;
+                    document.getElementById(`tab-${id}-${firstSub}`).classList.add('active');
+                    
+                    if (id === 'deudas' && firstSub === 'tarjetas') this.resumenTit();
+                } else {
+                    this.activeSub = null;
+                    document.getElementById(`tab-${id}`).classList.add('active');
+                    
+                    if (id === 'analisis') { this.graficos(); this.comparar(); }
+                    if (id === 'historial') this.mostrarHist();
+                }
+            },
+            
+            cambiarSubTab(parent, sub, el) {
+                document.querySelectorAll(`#subtabs-${parent} .subtab`).forEach(s => s.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                
+                el.classList.add('active');
+                this.activeSub = sub;
+                document.getElementById(`tab-${parent}-${sub}`).classList.add('active');
+                
+                if (parent === 'deudas' && sub === 'tarjetas') this.resumenTit();
+            },
+            
+            llenarSelects() {
+                const mSel = document.getElementById('mesActual');
+                this.meses.forEach((m,i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = m;
+                    mSel.appendChild(opt);
+                });
+                ['ing','fij','var'].forEach(t => {
+                    const sel = document.getElementById(`${t}-cat`);
+                    this.cat[t].forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.substring(3);
+                        opt.textContent = c;
+                        sel.appendChild(opt);
+                    });
+                });
+                const pSel = document.getElementById('pres-cat');
+                this.cat.var.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.substring(3);
+                    opt.textContent = c;
+                    pSel.appendChild(opt);
+                });
+            },
+            
+            getMes() {
+                return `${document.getElementById('anioActual').value}-${document.getElementById('mesActual').value}`;
+            },
+            
+            addHist(txt) {
+                this.datos.hist.unshift({fecha: new Date().toLocaleString('es-AR'), txt});
+                if (this.datos.hist.length > 50) this.datos.hist.pop();
+            },
+            
+            add(tipo) {
+                const nom = document.getElementById(`${tipo}-nombre`).value;
+                const monto = parseFloat(document.getElementById(`${tipo}-monto`).value);
+                const cat = document.getElementById(`${tipo}-cat`).value;
+                const col = document.getElementById(`${tipo}-color`).value;
+                const moneda = document.getElementById(`${tipo}-moneda`).value;
+                if (!nom || !monto) return alert('⚠️ Completa los campos');
+                const mk = this.getMes();
+                if (!this.datos[tipo][mk]) this.datos[tipo][mk] = [];
+                this.datos[tipo][mk].push({nom,monto,cat,col,moneda});
+                const montoARS = this.convertirARS(monto, moneda);
+                this.addHist(`${tipo}: ${nom} - ${this.formatearPesos(montoARS)}${moneda==='USD'?' (USD)':''}`);
+                document.getElementById(`${tipo}-nombre`).value = '';
+                document.getElementById(`${tipo}-monto`).value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            del(tipo, idx) {
+                const mk = this.getMes();
+                if (confirm(`¿Eliminar "${this.datos[tipo][mk][idx].nom}"?`)) {
+                    this.addHist(`Eliminado: ${this.datos[tipo][mk][idx].nom}`);
+                    this.datos[tipo][mk].splice(idx, 1);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            addTarjeta() {
+                const nom = document.getElementById('tar-nombre').value;
+                const tit = document.getElementById('tar-titular').value;
+                const monto = parseFloat(document.getElementById('tar-monto').value);
+                const cuotas = parseInt(document.getElementById('tar-cuotas').value);
+                const fecha = document.getElementById('tar-fecha').value;
+                const moneda = document.getElementById('tar-moneda').value;
+                if (!nom || !tit || !monto || !cuotas || !fecha) return alert('⚠️ Completa los campos');
+                this.datos.tar.push({nom,tit,monto,cuotas,pag:0,fecha,moneda});
+                const montoARS = this.convertirARS(monto, moneda);
+                this.addHist(`Tarjeta: ${nom} - ${this.formatearPesos(montoARS)} en ${cuotas} cuotas${moneda==='USD'?' (USD)':''}`);
+                document.getElementById('tar-nombre').value = '';
+                document.getElementById('tar-titular').value = '';
+                document.getElementById('tar-monto').value = '';
+                document.getElementById('tar-cuotas').value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            pagarTar(idx) {
+                if (this.datos.tar[idx].pag < this.datos.tar[idx].cuotas) {
+                    this.datos.tar[idx].pag++;
+                    this.addHist(`Cuota pagada: ${this.datos.tar[idx].nom}`);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            delTar(idx) {
+                if (confirm(`¿Eliminar "${this.datos.tar[idx].nom}"?`)) {
+                    this.addHist(`Tarjeta eliminada: ${this.datos.tar[idx].nom}`);
+                    this.datos.tar.splice(idx, 1);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            addPrestamo() {
+                const nom = document.getElementById('pre-nombre').value;
+                const ent = document.getElementById('pre-entidad').value;
+                const monto = parseFloat(document.getElementById('pre-monto').value);
+                const cuotas = parseInt(document.getElementById('pre-cuotas').value);
+                const moneda = document.getElementById('pre-moneda').value;
+                if (!nom || !ent || !monto || !cuotas) return alert('⚠️ Completa los campos');
+                this.datos.pre.push({nom,ent,monto,cuotas,pag:0,moneda});
+                const montoARS = this.convertirARS(monto, moneda);
+                this.addHist(`Préstamo: ${nom} - ${this.formatearPesos(montoARS)}${moneda==='USD'?' (USD)':''}`);
+                document.getElementById('pre-nombre').value = '';
+                document.getElementById('pre-entidad').value = '';
+                document.getElementById('pre-monto').value = '';
+                document.getElementById('pre-cuotas').value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            pagarPre(idx) {
+                if (this.datos.pre[idx].pag < this.datos.pre[idx].cuotas) {
+                    this.datos.pre[idx].pag++;
+                    this.addHist(`Cuota préstamo pagada: ${this.datos.pre[idx].nom}`);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            delPre(idx) {
+                if (confirm(`¿Eliminar "${this.datos.pre[idx].nom}"?`)) {
+                    this.addHist(`Préstamo eliminado: ${this.datos.pre[idx].nom}`);
+                    this.datos.pre.splice(idx, 1);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            addMeta() {
+                const nom = document.getElementById('meta-nombre').value;
+                const monto = parseFloat(document.getElementById('meta-monto').value);
+                if (!nom || !monto) return alert('⚠️ Completa los campos');
+                const mk = this.getMes();
+                if (!this.datos.metas[mk]) this.datos.metas[mk] = [];
+                this.datos.metas[mk].push({nom,monto});
+                document.getElementById('meta-nombre').value = '';
+                document.getElementById('meta-monto').value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            addAhorro() {
+                const nom = document.getElementById('aho-nombre').value;
+                const monto = parseFloat(document.getElementById('aho-monto').value);
+                if (!nom || !monto) return alert('⚠️ Completa los campos');
+                const mk = this.getMes();
+                if (!this.datos.aho[mk]) this.datos.aho[mk] = [];
+                this.datos.aho[mk].push({nom,monto});
+                document.getElementById('aho-nombre').value = '';
+                document.getElementById('aho-monto').value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            addPresupuesto() {
+                const cat = document.getElementById('pres-cat').value;
+                const monto = parseFloat(document.getElementById('pres-monto').value);
+                if (!cat || !monto) return alert('⚠️ Completa los campos');
+                const mk = this.getMes();
+                if (!this.datos.pres[mk]) this.datos.pres[mk] = {};
+                this.datos.pres[mk][cat] = monto;
+                document.getElementById('pres-monto').value = '';
+                this.guardar();
+                this.actualizar();
+            },
+            
+            calcTar(a, m) {
+                let t = 0;
+                this.datos.tar.forEach(x => {
+                    if (x.pag < x.cuotas) {
+                        const ini = new Date(x.fecha);
+                        const con = new Date(a, m, 1);
+                        const mT = (con.getFullYear() - ini.getFullYear()) * 12 + (con.getMonth() - ini.getMonth());
+                        if (mT >= 0 && mT < x.cuotas) {
+                            const montoARS = this.convertirARS(x.monto, x.moneda || 'ARS');
+                            t += montoARS / x.cuotas;
+                        }
+                    }
+                });
+                return t;
+            },
+            
+            calcPre() {
+                return this.datos.pre.filter(p => p.pag < p.cuotas).reduce((s, p) => {
+                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
+                    return s + montoARS / p.cuotas;
+                }, 0);
+            },
+            
+            mostrarLista(tipo) {
+                const mk = this.getMes();
+                const lista = this.datos[tipo][mk] || [];
+                const c = document.getElementById(`lista-${tipo}`);
+                if (lista.length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay registros</p>';
+                    return;
+                }
+                c.innerHTML = lista.map((it, i) => {
+                    const ico = this.cat[tipo].find(x => x.includes(it.cat))?.split(' ')[0] || '📌';
+                    const montoARS = this.convertirARS(it.monto, it.moneda || 'ARS');
+                    const badge = it.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
+                    return `<div class="item"><div class="item-info"><div class="item-name"><span style="font-size:18px;">${ico}</span><span>${it.nom}${badge}</span></div><span class="item-tag" style="background:${it.col}">${it.cat}</span></div><div class="item-amount">${this.formatearPesos(montoARS)}</div><button class="btn btn-danger" onclick="app.del('${tipo}',${i})">×</button></div>`;
+                }).join('');
+            },
+            
+            mostrarTar() {
+                const c = document.getElementById('lista-tar');
+                if (this.datos.tar.length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay compras</p>';
+                    return;
+                }
+                c.innerHTML = this.datos.tar.map((t, i) => {
+                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
+                    const cuota = montoARS / t.cuotas;
+                    const saldo = montoARS - (cuota * t.pag);
+                    const b = t.pag === t.cuotas ? 'success' : t.pag > 0 ? 'warning' : 'danger';
+                    const badge = t.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
+                    return `<div class="item"><div class="item-info"><div class="item-name">💳 ${t.nom}${badge}</div><small style="color:var(--text-light);font-size:11px;">${t.tit} | Cuota: ${this.formatearPesos(cuota)}</small></div><div style="text-align:center;"><strong>${t.pag}/${t.cuotas}</strong><br><small style="font-size:10px;">cuotas</small></div><div style="color:var(--danger);font-weight:700;">${this.formatearPesos(saldo)}</div><span class="badge badge-${b}">${t.pag===t.cuotas?'Pagado':'En curso'}</span><div style="display:flex;gap:6px;flex-wrap:wrap;">${t.pag<t.cuotas?`<button class="btn btn-success" onclick="app.pagarTar(${i})">Pagar</button>`:''}<button class="btn btn-danger" onclick="app.delTar(${i})">×</button></div></div>`;
+                }).join('');
+            },
+            
+            mostrarPre() {
+                const c = document.getElementById('lista-pre');
+                if (this.datos.pre.length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay préstamos</p>';
+                    return;
+                }
+                c.innerHTML = this.datos.pre.map((p, i) => {
+                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
+                    const cuota = montoARS / p.cuotas;
+                    const saldo = montoARS - (cuota * p.pag);
+                    const b = p.pag === p.cuotas ? 'success' : p.pag > 0 ? 'warning' : 'danger';
+                    const badge = p.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
+                    return `<div class="item"><div class="item-info"><div class="item-name">🏦 ${p.nom}${badge}</div><small style="color:var(--text-light);font-size:11px;">${p.ent} | Cuota: ${this.formatearPesos(cuota)}</small></div><div style="text-align:center;"><strong>${p.pag}/${p.cuotas}</strong><br><small style="font-size:10px;">cuotas</small></div><div style="color:var(--danger);font-weight:700;">${this.formatearPesos(saldo)}</div><span class="badge badge-${b}">${p.pag===p.cuotas?'Pagado':'En curso'}</span><div style="display:flex;gap:6px;flex-wrap:wrap;">${p.pag<p.cuotas?`<button class="btn btn-success" onclick="app.pagarPre(${i})">Pagar</button>`:''}<button class="btn btn-danger" onclick="app.delPre(${i})">×</button></div></div>`;
+                }).join('');
+            },
+            
+            mostrarAho() {
+                const mk = this.getMes();
+                const metas = this.datos.metas[mk] || [];
+                const aho = this.datos.aho[mk] || [];
+                const c = document.getElementById('lista-aho');
+                let html = '';
+                if (metas.length > 0) {
+                    html += '<h4 style="color:var(--primary-dark);margin-bottom:10px;font-size:14px;">🎯 Metas</h4>';
+                    html += metas.map(m => `<div class="item"><div>${m.nom}</div><div class="item-amount">${this.formatearPesos(m.monto)}</div></div>`).join('');
+                }
+                if (aho.length > 0) {
+                    html += '<h4 style="color:var(--primary-dark);margin:15px 0 10px;font-size:14px;">💰 Ahorros</h4>';
+                    html += aho.map(a => `<div class="item"><div>${a.nom}</div><div class="item-amount">${this.formatearPesos(a.monto)}</div></div>`).join('');
+                }
+                c.innerHTML = html || '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay registros</p>';
+                
+                const metaT = metas.reduce((s, m) => s + m.monto, 0);
+                const ahoT = aho.reduce((s, a) => s + a.monto, 0);
+                const prog = document.getElementById('progresoAhorro');
+                if (metaT === 0) {
+                    prog.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:15px;font-size:13px;">Define una meta</p>';
+                    return;
+                }
+                const porc = Math.min((ahoT / metaT) * 100, 100);
+                const diff = metaT - ahoT;
+                prog.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;"><span><strong>Meta:</strong> ${this.formatearPesos(metaT)}</span><span><strong>Ahorrado:</strong> ${this.formatearPesos(ahoT)}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${porc}%">${porc.toFixed(0)}%</div></div><div style="text-align:center;margin-top:10px;color:${diff>0?'var(--danger)':'var(--success)'};font-weight:700;font-size:14px;">${diff>0?`Faltan ${this.formatearPesos(diff)}`:'¡Meta alcanzada! 🎉'}</div>`;
+            },
+            
+            mostrarPres() {
+                const mk = this.getMes();
+                const pres = this.datos.pres[mk] || {};
+                const vars = this.datos.var[mk] || [];
+                const c = document.getElementById('listaPresupuestos');
+                if (Object.keys(pres).length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay presupuestos</p>';
+                    return;
+                }
+                const gCat = {};
+                vars.forEach(v => {
+                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
+                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
+                });
+                c.innerHTML = Object.entries(pres).map(([cat, lim]) => {
+                    const gast = gCat[cat] || 0;
+                    const porc = Math.min((gast / lim) * 100, 100);
+                    const disp = lim - gast;
+                    const ico = this.cat.var.find(x => x.includes(cat))?.split(' ')[0] || '📌';
+                    let col = 'var(--success)', msg = 'OK ✓';
+                    if (porc > 100) { col = 'var(--danger)'; msg = '¡Superado!'; }
+                    else if (porc > 90) { col = 'var(--danger)'; msg = '¡Cerca!'; }
+                    else if (porc > 70) { col = 'var(--warning)'; msg = 'Cuidado'; }
+                    return `<div style="background:var(--bg);padding:15px;border-radius:10px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;font-size:13px;"><strong>${ico} ${cat}</strong><div style="text-align:right;"><div>Gastado: <strong style="color:${col};">${this.formatearPesos(gast)}</strong></div><div style="font-size:11px;color:var(--text-light);">Límite: ${this.formatearPesos(lim)}</div></div></div><div class="progress-bar" style="height:24px;"><div class="progress-fill" style="width:${porc}%;background:${col};font-size:11px;">${porc.toFixed(0)}%</div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span style="color:${col};font-weight:600;">${msg}</span><span style="color:${disp>=0?'var(--success)':'var(--danger)'};font-weight:600;">${disp>=0?'Disponible:':'Excedido:'} ${this.formatearPesos(Math.abs(disp))}</span></div></div>`;
+                }).join('');
+            },
+            
+            resumenTit() {
+                const tit = {};
+                this.datos.tar.forEach(t => {
+                    if (!tit[t.tit]) tit[t.tit] = {cuota:0,saldo:0,cant:0};
+                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
+                    const c = montoARS / t.cuotas;
+                    tit[t.tit].cant++;
+                    if (t.pag < t.cuotas) {
+                        tit[t.tit].cuota += c;
+                        tit[t.tit].saldo += montoARS - (c * t.pag);
+                    }
+                });
+                const c = document.getElementById('resumenTitulares');
+                if (Object.keys(tit).length === 0) {
+                    c.innerHTML = '';
+                    return;
+                }
+                c.innerHTML = Object.entries(tit).map(([n, d]) => `<div style="background:var(--bg);padding:18px;border-radius:10px;margin-bottom:10px;"><h4 style="color:var(--primary-dark);margin-bottom:12px;font-size:15px;">👤 ${n}</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;"><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Compras</div><div style="font-size:22px;font-weight:700;">${d.cant}</div></div><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Cuota mensual</div><div style="font-size:22px;font-weight:700;color:var(--primary);">${this.formatearPesos(d.cuota)}</div></div><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Saldo</div><div style="font-size:22px;font-weight:700;color:var(--danger);">${this.formatearPesos(d.saldo)}</div></div></div></div>`).join('');
+            },
+            
+            actualizarResumen() {
+                const mk = this.getMes();
+                const m = parseInt(document.getElementById('mesActual').value);
+                const a = parseInt(document.getElementById('anioActual').value);
+                
+                const ing = (this.datos.ing[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
+                const fij = (this.datos.fij[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
+                const varG = (this.datos.var[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
+                const tar = this.calcTar(a, m);
+                const pre = this.calcPre();
+                const gast = fij + varG + tar + pre;
+                const bal = ing - gast;
+                
+                const dTar = this.datos.tar.reduce((s, t) => {
+                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
+                    return s + (montoARS - (montoARS / t.cuotas * t.pag));
+                }, 0);
+                const dPre = this.datos.pre.reduce((s, p) => {
+                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
+                    return s + (montoARS - (montoARS / p.cuotas * p.pag));
+                }, 0);
+                
+                document.getElementById('resumenCards').innerHTML = `
+                    <div class="card" style="background:linear-gradient(135deg,#2e7d32,#66bb6a);"><div class="card-title">Ingresos</div><div class="card-value">${this.formatearPesos(ing)}</div></div>
+                    <div class="card" style="background:linear-gradient(135deg,#c62828,#ef5350);"><div class="card-title">Gastos</div><div class="card-value">${this.formatearPesos(gast)}</div></div>
+                    <div class="card" style="background:linear-gradient(135deg,${bal>=0?'#f57c00':'#c62828'},${bal>=0?'#ffb74d':'#ef5350'});"><div class="card-title">Balance</div><div class="card-value">${this.formatearPesos(bal)}</div></div>
+                    <div class="card" style="background:linear-gradient(135deg,#1565c0,#42a5f5);"><div class="card-title">Deuda Tarjetas</div><div class="card-value">${this.formatearPesos(dTar)}</div></div>
+                    <div class="card" style="background:linear-gradient(135deg,#6a1b9a,#ab47bc);"><div class="card-title">Deuda Préstamos</div><div class="card-value">${this.formatearPesos(dPre)}</div></div>`;
+                
+                const max = Math.max(fij, varG, tar, pre) || 1;
+                const total = fij + varG + tar + pre;
+                
+                document.getElementById('desglose').innerHTML = `
+                    <div class="expense-card">
+                        <div class="expense-header">
+                            <span class="expense-title">Gastos Fijos</span>
+                            <span class="expense-icon">🏠</span>
+                        </div>
+                        <div class="expense-amount">${this.formatearPesos(fij)}</div>
+                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(fij/max)*100}%"></div></div>
+                        <div class="expense-percent">${total > 0 ? ((fij/total)*100).toFixed(1) : 0}% del total</div>
+                    </div>
+                    <div class="expense-card">
+                        <div class="expense-header">
+                            <span class="expense-title">Gastos Variables</span>
+                            <span class="expense-icon">🛒</span>
+                        </div>
+                        <div class="expense-amount">${this.formatearPesos(varG)}</div>
+                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(varG/max)*100}%"></div></div>
+                        <div class="expense-percent">${total > 0 ? ((varG/total)*100).toFixed(1) : 0}% del total</div>
+                    </div>
+                    <div class="expense-card">
+                        <div class="expense-header">
+                            <span class="expense-title">Tarjetas</span>
+                            <span class="expense-icon">💳</span>
+                        </div>
+                        <div class="expense-amount">${this.formatearPesos(tar)}</div>
+                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(tar/max)*100}%"></div></div>
+                        <div class="expense-percent">${total > 0 ? ((tar/total)*100).toFixed(1) : 0}% del total</div>
+                    </div>
+                    <div class="expense-card">
+                        <div class="expense-header">
+                            <span class="expense-title">Préstamos</span>
+                            <span class="expense-icon">🏦</span>
+                        </div>
+                        <div class="expense-amount">${this.formatearPesos(pre)}</div>
+                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(pre/max)*100}%"></div></div>
+                        <div class="expense-percent">${total > 0 ? ((pre/total)*100).toFixed(1) : 0}% del total</div>
+                    </div>
+                `;
+                
+                this.alertas(mk, ing, gast, bal, fij, varG);
+            },
+            
+            alertas(mk, ing, gast, bal, fij, varG) {
+                const al = [];
+                if (gast > ing * 0.9 && ing > 0) al.push('<div class="alert alert-warning"><strong>⚠️ Alto nivel de gastos</strong><br>Tus gastos superan el 90% de tus ingresos.</div>');
+                if (bal < 0) al.push('<div class="alert alert-danger"><strong>🚨 Balance negativo</strong><br>Estás gastando más de lo que ingresas este mes.</div>');
+                
+                const pres = this.datos.pres[mk] || {};
+                const vars = this.datos.var[mk] || [];
+                const gCat = {};
+                vars.forEach(v => {
+                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
+                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
+                });
+                Object.entries(pres).forEach(([cat, lim]) => {
+                    if ((gCat[cat] || 0) > lim) {
+                        al.push(`<div class="alert alert-warning"><strong>⚠️ Presupuesto superado</strong><br>${cat}: excediste por ${this.formatearPesos((gCat[cat]||0) - lim)}</div>`);
+                    }
+                });
+                
+                const tarVenc = this.datos.tar.filter(t => (t.cuotas - t.pag) > 0 && (t.cuotas - t.pag) <= 3);
+                if (tarVenc.length > 0) al.push(`<div class="alert alert-info"><strong>ℹ️ Cuotas finalizando</strong><br>${tarVenc.length} compra(s) en cuotas finalizan en ≤3 meses.</div>`);
+                
+                const preVenc = this.datos.pre.filter(p => (p.cuotas - p.pag) > 0 && (p.cuotas - p.pag) <= 3);
+                if (preVenc.length > 0) al.push(`<div class="alert alert-info"><strong>ℹ️ Préstamos finalizando</strong><br>${preVenc.length} préstamo(s) finalizan en ≤3 meses.</div>`);
+                
+                const metas = this.datos.metas[mk] || [];
+                const aho = this.datos.aho[mk] || [];
+                const metaT = metas.reduce((s, m) => s + m.monto, 0);
+                const ahoT = aho.reduce((s, a) => s + a.monto, 0);
+                if (metaT > 0 && ahoT < metaT * 0.5) al.push('<div class="alert alert-warning"><strong>⚠️ Meta de ahorro</strong><br>Llevas menos del 50% de tu meta de ahorro.</div>');
+                
+                const valoresVar = Object.values(this.datos.var);
+                if (valoresVar.length > 1) {
+                    const totales = valoresVar.map(mes => mes.reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0));
+                    const prom = totales.reduce((s, v) => s + v, 0) / totales.length;
+                    if (varG > prom * 1.5 && prom > 0) al.push('<div class="alert alert-warning"><strong>⚠️ Gasto inusual</strong><br>Tus gastos variables son 50% mayores al promedio.</div>');
+                }
+                
+                document.getElementById('alertas').innerHTML = al.length ? al.join('') : '<p style="text-align:center;color:var(--success);font-weight:700;font-size:14px;">✅ Todo en orden</p>';
+            },
+            
+            graficos() {
+                const mk = this.getMes();
+                const vars = this.datos.var[mk] || [];
+                const gCat = {};
+                vars.forEach(v => {
+                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
+                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
+                });
+                const max1 = Math.max(...Object.values(gCat), 1);
+                document.getElementById('grafico1').innerHTML = Object.entries(gCat).map(([c, m]) => {
+                    const h = (m / max1) * 100;
+                    const ico = this.cat.var.find(x => x.includes(c))?.split(' ')[0] || '📌';
+                    return `<div class="chart-bar"><div style="font-size:10px;color:var(--text-light);font-weight:600;">${this.formatearPesos(m)}</div><div class="bar" style="height:${h}%;"></div><div class="bar-label">${ico}<br><span style="font-size:9px;">${c}</span></div></div>`;
+                }).join('') || '<p style="text-align:center;color:var(--text-light);padding:40px;font-size:13px;">Sin datos</p>';
+                
+                const a = document.getElementById('anioActual').value;
+                const evol = [];
+                for (let i = 0; i < 12; i++) {
+                    const m = `${a}-${i}`;
+                    const ing = (this.datos.ing[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
+                    const gas = (this.datos.fij[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
+                                (this.datos.var[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
+                    evol.push({m: this.meses[i].substring(0, 3), ing, gas});
+                }
+                const max2 = Math.max(...evol.map(e => Math.max(e.ing, e.gas)), 1);
+                document.getElementById('grafico2').innerHTML = evol.map(e => {
+                    const hI = (e.ing / max2) * 100;
+                    const hG = (e.gas / max2) * 100;
+                    return `<div class="chart-bar"><div style="font-size:9px;color:var(--success);font-weight:600;">${this.formatearPesos(e.ing)}</div><div class="bar" style="height:${hI}%;background:linear-gradient(to top,var(--success),#66bb6a);"></div><div class="bar" style="height:${hG}%;background:linear-gradient(to top,var(--danger),#ef5350);margin-top:3px;"></div><div style="font-size:9px;color:var(--danger);font-weight:600;">${this.formatearPesos(e.gas)}</div><div class="bar-label">${e.m}</div></div>`;
+                }).join('');
+            },
+            
+            proyectar() {
+                const mP = parseInt(document.getElementById('mesesProy').value);
+                const mA = parseInt(document.getElementById('mesActual').value);
+                const aA = parseInt(document.getElementById('anioActual').value);
+                const pIng = this.prom('ing');
+                const pFij = this.prom('fij');
+                const pVar = this.prom('var');
+                let proy = [];
+                let acum = 0;
+                for (let i = 1; i <= mP; i++) {
+                    const m = (mA + i) % 12;
+                    const a = aA + Math.floor((mA + i) / 12);
+                    const ing = pIng;
+                    const gas = pFij + pVar + this.calcTar(a, m) + this.calcPre();
+                    const bal = ing - gas;
+                    acum += bal;
+                    proy.push({m: this.meses[m], a, ing, gas, bal, acum});
+                }
+                const tI = proy.reduce((s, p) => s + p.ing, 0);
+                const tG = proy.reduce((s, p) => s + p.gas, 0);
+                const bF = proy[proy.length - 1].acum;
+                document.getElementById('resultadoProy').innerHTML = `<div class="cards" style="margin-top:15px;"><div class="card" style="background:linear-gradient(135deg,#2e7d32,#66bb6a);"><div class="card-title">Ing. Proy.</div><div class="card-value">${this.formatearPesos(tI)}</div></div><div class="card" style="background:linear-gradient(135deg,#c62828,#ef5350);"><div class="card-title">Gast. Proy.</div><div class="card-value">${this.formatearPesos(tG)}</div></div><div class="card" style="background:linear-gradient(135deg,${bF>=0?'#f57c00':'#c62828'},${bF>=0?'#ffb74d':'#ef5350'});"><div class="card-title">Bal. Acum.</div><div class="card-value">${this.formatearPesos(bF)}</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:15px;">${proy.map(p => `<div style="background:var(--bg);padding:16px;border-radius:10px;"><h3 style="color:var(--primary-dark);margin-bottom:12px;font-size:15px;font-weight:700;">${p.m} ${p.a}</h3><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Ingresos:</span><span style="color:var(--success);font-weight:700;">${this.formatearPesos(p.ing)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Gastos:</span><span style="color:var(--danger);font-weight:700;">${this.formatearPesos(p.gas)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Balance:</span><span style="color:${p.bal>=0?'var(--success)':'var(--danger)'};font-weight:700;">${this.formatearPesos(p.bal)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--primary);margin-top:6px;font-size:12px;"><strong>Acum.:</strong><strong style="color:${p.acum>=0?'var(--success)':'var(--danger)'};font-size:15px;">${this.formatearPesos(p.acum)}</strong></div></div>`).join('')}</div><div class="alert alert-info" style="margin-top:15px;font-size:12px;">📝 Proyección basada en promedios históricos + cuotas registradas.</div>`;
+            },
+            
+            prom(tipo) {
+                const vals = Object.values(this.datos[tipo]);
+                if (!vals.length) return 0;
+                const tots = vals.map(mes => mes.reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0));
+                return tots.reduce((s, v) => s + v, 0) / tots.length;
+            },
+            
+            comparar() {
+                const a = document.getElementById('anioActual').value;
+                document.getElementById('tablaComp').innerHTML = this.meses.map((mes, i) => {
+                    const mk = `${a}-${i}`;
+                    const ing = (this.datos.ing[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
+                    const gas = (this.datos.fij[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
+                                (this.datos.var[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
+                                this.calcTar(parseInt(a), i) + this.calcPre();
+                    const bal = ing - gas;
+                    return `<tr><td><strong>${mes}</strong></td><td style="color:var(--success);font-weight:600;">${this.formatearPesos(ing)}</td><td style="color:var(--danger);font-weight:600;">${this.formatearPesos(gas)}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'};font-weight:700;">${this.formatearPesos(bal)}</td></tr>`;
+                }).join('');
+            },
+            
+            mostrarHist() {
+                const c = document.getElementById('listaHistorial');
+                if (this.datos.hist.length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:30px;font-size:13px;">No hay actividad</p>';
+                    return;
+                }
+                c.innerHTML = this.datos.hist.slice(0, 30).map(h => `<div style="background:var(--bg);padding:14px;border-radius:8px;border-left:4px solid var(--primary);margin-bottom:10px;"><div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">${h.fecha}</div><div style="font-size:13px;color:var(--text);">${h.txt}</div></div>`).join('');
+            },
+            
+            actualizar() {
+                this.actualizarResumen();
+                ['ing','fij','var'].forEach(t => this.mostrarLista(t));
+                this.mostrarTar();
+                this.mostrarPre();
+                this.mostrarAho();
+                this.mostrarPres();
+            },
+            
+            mostrarAyuda() {
+                document.getElementById('modalAyuda').style.display = 'block';
+            },
+            
+            cerrarAyuda() {
+                document.getElementById('modalAyuda').style.display = 'none';
+            },
+            
+            exportar() {
+                const json = JSON.stringify(this.datos, null, 2);
+                const blob = new Blob([json], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `auratech-finanzas-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                alert('✅ Datos exportados correctamente');
+            },
+            
+            importar(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        if (confirm('⚠️ ¿Reemplazar TODOS los datos actuales?')) {
+                            this.datos = JSON.parse(ev.target.result);
+                            if (!this.datos.tipoCambio) this.datos.tipoCambio = 1350;
+                            document.getElementById('tipoCambio').value = this.datos.tipoCambio;
+                            this.guardar();
+                            this.actualizar();
+                            alert('✅ Datos importados correctamente');
+                        }
+                    } catch {
+                        alert('❌ Error al importar el archivo');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            },
+            
+            guardar() {
+                localStorage.setItem('auratech_datos', JSON.stringify(this.datos));
+            },
+            
+            cargarDatos() {
+                const guardado = localStorage.getItem('auratech_datos');
+                if (guardado) {
+                    this.datos = JSON.parse(guardado);
+                    if (!this.datos.tipoCambio) this.datos.tipoCambio = 1350;
+                }
+            }
+        };
+        
+        window.onclick = (e) => {
+            if (e.target == document.getElementById('modalAyuda')) app.cerrarAyuda();
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+	<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(registration => console.log('SW registrado'))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="theme-color" content="#00796b">
+    <title>Finanzas Pro | Auratech</title>
+	<link rel="manifest" href="manifest.json">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="Finanzas Pro">
+	<link rel="apple-touch-icon" href="https://i.postimg.cc/H8x4Ljzx/logo.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #00796b; --primary-light: #48a999; --primary-dark: #004d40;
+            --secondary: #1565c0; --accent: #ffa000; --success: #2e7d32;
+            --danger: #c62828; --warning: #f57c00; --text: #212121;
+            --text-light: #757575; --bg: #ffffff; --bg-alt: #f5f5f5; --border: #e0e0e0;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        .container { max-width: 1400px; margin: 0 auto; background: var(--bg); min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: clamp(25px, 4vw, 40px) 20px; text-align: center; position: relative; }
+        .logo-container { margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
+        .logo { max-width: 90px; max-height: 90px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
+        .brand h1 { font-family: 'Poppins', sans-serif; font-size: clamp(1.8rem, 4.5vw, 3rem); margin-bottom: 8px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .brand .tagline { font-size: clamp(0.85rem, 2vw, 0.95rem); opacity: 0.9; font-weight: 400; letter-spacing: 1px; }
+        .tabs { display: flex; background: var(--bg-alt); border-bottom: 2px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 100; }
+        .tab { padding: 16px 20px; cursor: pointer; border: none; background: transparent; font-size: 14px; font-weight: 600; color: var(--text-light); transition: all 0.3s; white-space: nowrap; border-bottom: 3px solid transparent; }
+        .tab:hover { background: rgba(0, 121, 107, 0.05); color: var(--primary); }
+        .tab.active { background: var(--bg); color: var(--primary); border-bottom-color: var(--primary); }
+        .subtabs { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 20px; gap: 8px; flex-wrap: wrap; position: sticky; top: 58px; z-index: 99; }
+        .subtabs.active { display: flex; }
+        .subtab { padding: 10px 18px; cursor: pointer; border: 2px solid var(--border); background: var(--bg-alt); font-size: 13px; font-weight: 600; color: var(--text); transition: all 0.3s; border-radius: 8px; }
+        .subtab:hover { border-color: var(--primary); color: var(--primary); background: var(--bg); }
+        .subtab.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .content { padding: clamp(15px, 3vw, 30px); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .info-banner { background: linear-gradient(135deg, rgba(0, 121, 107, 0.08) 0%, rgba(21, 101, 192, 0.08) 100%); border-left: 4px solid var(--primary); padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; align-items: start; }
+        .info-banner h3 { color: var(--primary-dark); font-size: 15px; margin-bottom: 4px; }
+        .info-banner p { color: var(--text); font-size: 13px; line-height: 1.5; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 16px; margin-bottom: 20px; }
+        .card { color: white; padding: 20px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s; }
+        .card:hover { transform: translateY(-4px); }
+        .card-title { font-size: 11px; opacity: 0.9; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-value { font-size: clamp(22px, 4vw, 28px); font-weight: 700; }
+        .section { background: var(--bg-alt); padding: clamp(18px, 3vw, 25px); border-radius: 14px; margin-bottom: 18px; }
+        .section-title { font-size: clamp(16px, 3vw, 19px); font-weight: 700; color: var(--primary-dark); margin-bottom: 16px; }
+        .expense-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; }
+        .expense-card { background: var(--bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.3s; border-left: 4px solid var(--primary); }
+        .expense-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .expense-title { font-size: 14px; font-weight: 600; color: var(--text); }
+        .expense-icon { font-size: 24px; }
+        .expense-amount { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+        .expense-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .expense-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 0.8s; border-radius: 4px; }
+        .expense-percent { font-size: 12px; color: var(--text-light); margin-top: 6px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 10px; margin-bottom: 10px; }
+        input, select { padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 13px; transition: all 0.3s; background: var(--bg); font-family: inherit; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1); }
+        input[type="color"] { padding: 4px; height: 42px; cursor: pointer; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.3s; font-family: inherit; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        .btn-danger { background: var(--danger); color: white; padding: 8px 16px; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-info { background: var(--secondary); color: white; }
+        .btn-warning { background: var(--accent); color: white; }
+        .item-list { background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 16px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; transition: background 0.2s; border-radius: 6px; }
+        .item:hover { background: var(--bg-alt); }
+        .item:last-child { border-bottom: none; }
+        .item-info { flex: 1; min-width: 160px; }
+        .item-name { font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .item-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; color: white; margin-top: 4px; }
+        .item-amount { font-weight: 700; color: var(--primary); font-size: clamp(15px, 3vw, 17px); }
+        .progress-bar { background: var(--border); height: 32px; border-radius: 16px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--primary)); transition: width 0.8s; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px; }
+        .alert { padding: 14px 18px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; line-height: 1.5; }
+        .alert-info { background: #e3f2fd; color: #0d47a1; border-left: 4px solid var(--secondary); }
+        .alert-warning { background: #fff3e0; color: #e65100; border-left: 4px solid var(--warning); }
+        .alert-danger { background: #ffebee; color: #c62828; border-left: 4px solid var(--danger); }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+        .badge-success { background: #c8e6c9; color: #1b5e20; }
+        .badge-warning { background: #fff3e0; color: #e65100; }
+        .badge-danger { background: #ffcdd2; color: #b71c1c; }
+        .chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 260px; gap: 6px; padding: 15px 0; border-bottom: 2px solid var(--border); overflow-x: auto; }
+        .chart-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 45px; }
+        .bar { width: 100%; max-width: 60px; background: linear-gradient(to top, var(--primary), var(--primary-light)); border-radius: 6px 6px 0 0; transition: all 0.5s; min-height: 15px; animation: growUp 0.8s; }
+        @keyframes growUp { from { height: 0; } }
+        .bar:hover { opacity: 0.8; }
+        .bar-label { font-size: 10px; font-weight: 600; color: var(--text); text-align: center; }
+        .comparison-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg); border-radius: 10px; overflow: hidden; }
+        .comparison-table th, .comparison-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        .comparison-table th { background: var(--primary); color: white; font-weight: 600; text-transform: uppercase; font-size: 10px; }
+        .comparison-table tr:hover { background: var(--bg-alt); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
+        .modal-content { background: var(--bg); margin: 5% auto; padding: clamp(25px, 5vw, 35px); border-radius: 16px; width: 90%; max-width: 550px; max-height: 85vh; overflow-y: auto; }
+        .modal-header { font-size: clamp(20px, 4vw, 24px); font-weight: 700; color: var(--primary-dark); margin-bottom: 16px; text-align: center; }
+        .modal-body { font-size: 14px; color: var(--text); line-height: 1.7; }
+        .modal-body ul { margin: 14px 0; padding-left: 18px; }
+        .modal-body li { margin-bottom: 8px; }
+        .currency-badge { display: inline-block; padding: 2px 6px; background: var(--accent); color: white; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+        @media (max-width: 768px) {
+            .header { padding: 25px 15px; }
+            .tab { padding: 14px 16px; font-size: 13px; }
+            .subtabs { top: 56px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: 1fr; }
+            .expense-grid { grid-template-columns: 1fr; }
+            .item { flex-direction: column; align-items: stretch; }
+            .item-amount { text-align: left; }
+            .btn { width: 100%; padding: 14px; }
+            .chart-bars { height: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="https://i.postimg.cc/H8x4Ljzx/logo.jpg" class="logo" alt="Auratech Logo">
+            </div>
+            <div class="brand">
+                <h1>FINANZAS PRO</h1>
+                <p class="tagline">by Auratech™</p>
+            </div>
+        </div>
+        
+        <div class="tabs" id="tabsContainer"></div>
+        <div id="subtabsContainer"></div>
+        
+        <div class="content">
+            <!-- RESUMEN -->
+            <div id="tab-resumen" class="tab-content active">
+                <div class="info-banner">
+                    <div>💡</div>
+                    <div><h3>Panel de Control</h3><p>Visualiza tu situación financiera actual. Usa los selectores para cambiar de mes/año.</p></div>
+                </div>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;">
+                    <select id="mesActual" onchange="app.actualizar()" style="flex: 1; min-width: 130px;"></select>
+                    <input type="number" id="anioActual" min="2020" max="2030" onchange="app.actualizar()" style="flex: 1; min-width: 100px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label style="font-size: 13px; font-weight: 600; color: var(--text);">USD:</label>
+                        <input type="number" id="tipoCambio" placeholder="1.350" step="0.01" onchange="app.guardarTipoCambio()" style="width: 100px; padding: 8px;">
+                    </div>
+                    <button class="btn btn-success" onclick="app.exportar()">Exportar</button>
+                    <button class="btn btn-info" onclick="document.getElementById('importFile').click()">Importar</button>
+                    <button class="btn btn-warning" onclick="app.mostrarAyuda()">❓</button>
+                    <input type="file" id="importFile" style="display:none" accept=".json" onchange="app.importar(event)">
+                </div>
+                
+                <div class="cards" id="resumenCards"></div>
+                
+                <div class="section">
+                    <div class="section-title">📊 Distribución de Gastos</div>
+                    <div class="expense-grid" id="desglose"></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">🔔 Alertas Inteligentes</div>
+                    <div id="alertas"></div>
+                </div>
+            </div>
+            
+            <!-- GESTIÓN - INGRESOS -->
+            <div id="tab-gestion-ingresos" class="tab-content">
+                <div class="info-banner">
+                    <div>💵</div>
+                    <div><h3>Ingresos</h3><p>Registra todos tus ingresos mensuales: salarios, freelance, inversiones, etc.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="ing-nombre" placeholder="Nombre">
+                        <select id="ing-cat"></select>
+                        <select id="ing-moneda">
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <input type="number" id="ing-monto" placeholder="Monto" step="0.01">
+                        <input type="color" id="ing-color" value="#2e7d32">
+                        <button class="btn btn-primary" onclick="app.add('ing')">+ Agregar</button>
+                    </div>
+                    <div class="item-list" id="lista-ing"></div>
+                </div>
+            </div>
+            
+            <!-- GESTIÓN - GASTOS FIJOS -->
+            <div id="tab-gestion-fijos" class="tab-content">
+                <div class="info-banner">
+                    <div>🏠</div>
+                    <div><h3>Gastos Fijos</h3><p>Registra gastos recurrentes mensuales: alquiler, servicios, suscripciones, seguros.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="fij-nombre" placeholder="Nombre">
+                        <select id="fij-cat"></select>
+                        <select id="fij-moneda">
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <input type="number" id="fij-monto" placeholder="Monto" step="0.01">
+                        <input type="color" id="fij-color" value="#c62828">
+                        <button class="btn btn-primary" onclick="app.add('fij')">+ Agregar</button>
+                    </div>
+                    <div class="item-list" id="lista-fij"></div>
+                </div>
+            </div>
+            
+            <!-- GESTIÓN - GASTOS VARIABLES -->
+            <div id="tab-gestion-variables" class="tab-content">
+                <div class="info-banner">
+                    <div>🛒</div>
+                    <div><h3>Gastos Variables</h3><p>Registra gastos que cambian cada mes: alimentación, transporte, entretenimiento.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="var-nombre" placeholder="Nombre">
+                        <select id="var-cat"></select>
+                        <select id="var-moneda">
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <input type="number" id="var-monto" placeholder="Monto" step="0.01">
+                        <input type="color" id="var-color" value="#f57c00">
+                        <button class="btn btn-primary" onclick="app.add('var')">+ Agregar</button>
+                    </div>
+                    <div class="item-list" id="lista-var"></div>
+                </div>
+            </div>
+            
+            <!-- DEUDAS - TARJETAS -->
+            <div id="tab-deudas-tarjetas" class="tab-content">
+                <div class="info-banner">
+                    <div>💳</div>
+                    <div><h3>Tarjetas - Compras en Cuotas</h3><p>Gestiona compras en cuotas. El sistema calcula automáticamente las cuotas mensuales.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="tar-nombre" placeholder="Concepto">
+                        <input type="text" id="tar-titular" placeholder="Titular">
+                        <select id="tar-moneda">
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <input type="number" id="tar-monto" placeholder="Monto total" step="0.01">
+                        <input type="number" id="tar-cuotas" placeholder="Cuotas" min="1">
+                        <input type="date" id="tar-fecha">
+                        <button class="btn btn-primary" onclick="app.addTarjeta()">+ Agregar</button>
+                    </div>
+                    <div class="item-list" id="lista-tar"></div>
+                    <div id="resumenTitulares" style="margin-top:15px;"></div>
+                </div>
+            </div>
+            
+            <!-- DEUDAS - PRÉSTAMOS -->
+            <div id="tab-deudas-prestamos" class="tab-content">
+                <div class="info-banner">
+                    <div>🏦</div>
+                    <div><h3>Préstamos</h3><p>Controla préstamos bancarios, personales o de cualquier tipo.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="pre-nombre" placeholder="Tipo">
+                        <input type="text" id="pre-entidad" placeholder="Entidad">
+                        <select id="pre-moneda">
+                            <option value="ARS">ARS</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <input type="number" id="pre-monto" placeholder="Monto" step="0.01">
+                        <input type="number" id="pre-cuotas" placeholder="Cuotas" min="1">
+                        <button class="btn btn-primary" onclick="app.addPrestamo()">+ Agregar</button>
+                    </div>
+                    <div class="item-list" id="lista-pre"></div>
+                </div>
+            </div>
+            
+            <!-- METAS - AHORROS -->
+            <div id="tab-metas-ahorros" class="tab-content">
+                <div class="info-banner">
+                    <div>🐷</div>
+                    <div><h3>Metas de Ahorro</h3><p>Define objetivos de ahorro y registra tus avances mensualmente.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <input type="text" id="meta-nombre" placeholder="Meta">
+                        <input type="number" id="meta-monto" placeholder="Objetivo $" step="0.01">
+                        <button class="btn btn-primary" onclick="app.addMeta()">Establecer</button>
+                    </div>
+                    <div class="form-grid" style="margin-top:10px;">
+                        <input type="text" id="aho-nombre" placeholder="Ahorro realizado">
+                        <input type="number" id="aho-monto" placeholder="Monto $" step="0.01">
+                        <button class="btn btn-success" onclick="app.addAhorro()">Registrar</button>
+                    </div>
+                    <div class="item-list" id="lista-aho"></div>
+                    <div id="progresoAhorro" style="margin-top:15px;"></div>
+                </div>
+            </div>
+            
+            <!-- METAS - PRESUPUESTOS -->
+            <div id="tab-metas-presupuestos" class="tab-content">
+                <div class="info-banner">
+                    <div>🎯</div>
+                    <div><h3>Presupuestos por Categoría</h3><p>Establece límites de gasto por categoría. Recibe alertas al acercarte o superar los límites.</p></div>
+                </div>
+                <div class="section">
+                    <div class="form-grid">
+                        <select id="pres-cat"></select>
+                        <input type="number" id="pres-monto" placeholder="Límite $" step="0.01">
+                        <button class="btn btn-primary" onclick="app.addPresupuesto()">Establecer</button>
+                    </div>
+                    <div id="listaPresupuestos" style="margin-top:15px;"></div>
+                </div>
+            </div>
+            
+            <!-- ANÁLISIS -->
+            <div id="tab-analisis" class="tab-content">
+                <div class="info-banner">
+                    <div>📈</div>
+                    <div><h3>Análisis Financiero</h3><p>Visualiza gráficos, proyecciones futuras y comparaciones mensuales para tomar mejores decisiones.</p></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">📊 Gastos por Categoría</div>
+                    <div style="background:var(--bg);padding:15px;border-radius:10px;">
+                        <div class="chart-bars" id="grafico1"></div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">📈 Evolución Anual</div>
+                    <div style="background:var(--bg);padding:15px;border-radius:10px;">
+                        <div class="chart-bars" id="grafico2"></div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">🔮 Proyección Financiera</div>
+                    <div class="form-grid">
+                        <select id="mesesProy">
+                            <option value="3">3 meses</option>
+                            <option value="6">6 meses</option>
+                            <option value="12">12 meses</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="app.proyectar()">Calcular</button>
+                    </div>
+                    <div id="resultadoProy"></div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">📉 Comparación Anual</div>
+                    <div style="overflow-x:auto;">
+                        <table class="comparison-table">
+                            <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></thead>
+                            <tbody id="tablaComp"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- HISTORIAL -->
+            <div id="tab-historial" class="tab-content">
+                <div class="info-banner">
+                    <div>📜</div>
+                    <div><h3>Historial de Actividad</h3><p>Registro automático de todas tus operaciones con fecha y hora.</p></div>
+                </div>
+                <div class="section">
+                    <div id="listaHistorial"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
