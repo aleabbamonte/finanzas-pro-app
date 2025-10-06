@@ -55,12 +55,27 @@
             activeTab: 'resumen',
             activeSub: null,
             datos: { ing:{}, fij:{}, var:{}, tar:[], pre:[], metas:{}, aho:{}, pres:{}, hist:[], tipoCambio: 1350 },
-            
+            async actualizarDolar() {
+    try {
+        const response = await fetch('https://dolarapi.com/v1/dolares/oficial');
+        const data = await response.json();
+        const valorVenta = data.venta;
+        
+        document.getElementById('tipoCambio').value = valorVenta;
+        this.datos.tipoCambio = valorVenta;
+        this.guardar();
+        this.actualizar();
+        alert(`✅ Dólar actualizado: $${this.formatearPesos(valorVenta)}`);
+    } catch (error) {
+        alert('❌ No se pudo obtener la cotización. Verifica tu conexión a internet.');
+    }
+},
             formatearPesos(num) {
                 return new Intl.NumberFormat('es-AR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 }).format(num);
+				
             },
             
             convertirARS(monto, moneda) {
