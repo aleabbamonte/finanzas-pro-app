@@ -4,8 +4,8 @@
   "description": "Aplicación profesional de finanzas personales con control de gastos, presupuestos y proyecciones financieras",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#00796b",
-  "theme_color": "#00796b",
+  "background_color": "#031a30",
+  "theme_color": "#031a30",
   "orientation": "portrait",
   "id": "/",
   "icons": [
@@ -21,3 +21,4 @@
     }
   ]
 }
+
