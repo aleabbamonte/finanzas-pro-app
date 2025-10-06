@@ -930,9 +930,9 @@ if ('serviceWorker' in navigator) {
        					<span>Actualizar</span>
     					</button>
                 </div>
-                    <button class="btn btn-success" onclick="app.exportar()">Exportar</button>
-                    <button class="btn btn-info" onclick="document.getElementById('importFile').click()">Importar</button>
-                    <button class="btn btn-warning" onclick="app.mostrarAyuda()">❓</button>
+					<button class="btn" onclick="app.exportar()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Exportar</button>
+					<button class="btn" onclick="document.getElementById('importFile').click()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Importar</button>
+					<button class="btn" onclick="app.mostrarAyuda()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Info</button>
                     <input type="file" id="importFile" style="display:none" accept=".json" onchange="app.importar(event)">
                 </div>
                 
