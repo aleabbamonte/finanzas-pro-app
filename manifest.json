@@ -1,10 +1,11 @@
 {
   "name": "Finanzas Pro by Auratech™",
   "short_name": "Finanzas Pro",
+  "id": "/finanzas-pro-app/",
   "description": "Gestión inteligente de finanzas personales",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#031a30",
+  "background_color": "#0a0e27",
   "theme_color": "#00d4ff",
   "orientation": "portrait-primary",
   "icons": [
