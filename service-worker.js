@@ -1,8 +1,11 @@
-javascriptconst CACHE_NAME = 'finanzas-pro-v1';
+const CACHE_NAME = 'finanzas-pro-v3.0';
 const urlsToCache = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './logo-192.png',
+  './logo-512.png',
+  './logo.png'
 ];
 
 // Instalación del service worker
@@ -11,6 +14,8 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
+  // Forzar activación inmediata
+  self.skipWaiting();
 });
 
 // Activación y limpieza de cachés antiguos
@@ -26,6 +31,8 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  // Tomar control inmediato
+  return self.clients.claim();
 });
 
 // Interceptar peticiones y servir desde caché
