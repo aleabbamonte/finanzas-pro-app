@@ -1,1160 +1,1963 @@
-    <!-- Modal Ayuda -->
-    <div id="modalAyuda" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">Bienvenido a Finanzas Pro<br><small style="font-size:16px;font-weight:400;color:var(--text-light);">by Auratech™</small></div>
-            <div class="modal-body">
-                <p><strong>Tu asistente financiero profesional:</strong></p>
-                <ul>
-                    <li>📊 Visualiza tu situación financiera en tiempo real</li>
-                    <li>💰 Controla ingresos, gastos fijos y variables</li>
-                    <li>💳 Gestiona compras en cuotas y préstamos</li>
-                    <li>🎯 Define metas de ahorro y presupuestos</li>
-                    <li>📈 Proyecta tu futuro financiero</li>
-                    <li>🔔 Recibe alertas inteligentes personalizadas</li>
-                    <li>💵 Registra gastos en USD convertidos automáticamente a ARS</li>
-                </ul>
-                <p><strong>💡 Consejos:</strong></p>
-                <ul>
-                    <li>Actualiza el tipo de cambio USD en el panel de Resumen</li>
-                    <li>Exporta tus datos regularmente como respaldo</li>
-                    <li>Revisa las alertas para mantener finanzas saludables</li>
-                    <li>Usa la proyección para planificar a futuro</li>
-                </ul>
-                <p style="text-align:center;color:var(--primary);font-weight:600;margin-top:18px;">Tu éxito financiero comienza aquí</p>
-            </div>
-            <button class="btn btn-primary" onclick="app.cerrarAyuda()" style="display:block;margin:20px auto 0;padding:12px 32px;">Comenzar</button>
-        </div>
-    </div>
-    
-    <script>
-        const app = {
-            meses: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
-            cat: {
-                ing: ['💼 Sueldo','💻 Freelance','📈 Inversiones','🏠 Alquiler','🛍️ Ventas','🎁 Regalo','💰 Otros'],
-                fij: ['🏠 Vivienda','💡 Servicios','📺 Suscripciones','🛡️ Seguros','🚗 Transporte','📚 Educación','📌 Otros'],
-                var: ['🍽️ Alimentación','🚌 Transporte','🎬 Entretenimiento','⚕️ Salud','👕 Ropa','💄 Belleza','🐾 Mascotas','🎁 Regalos','🛍️ Otros']
-            },
-            tabs: [
-                {id:'resumen', name:'📊 Resumen', subs:null},
-                {id:'gestion', name:'💰 Gestión', subs:[
-                    {id:'ingresos', name:'💵 Ingresos'},
-                    {id:'fijos', name:'🏠 Gastos Fijos'},
-                    {id:'variables', name:'🛒 Gastos Variables'}
-                ]},
-                {id:'deudas', name:'💳 Deudas', subs:[
-                    {id:'tarjetas', name:'💳 Tarjetas'},
-                    {id:'prestamos', name:'🏦 Préstamos'}
-                ]},
-                {id:'metas', name:'🎯 Metas', subs:[
-                    {id:'ahorros', name:'🐷 Ahorros'},
-                    {id:'presupuestos', name:'🎯 Presupuestos'}
-                ]},
-                {id:'analisis', name:'📈 Análisis', subs:null},
-                {id:'historial', name:'📜 Historial', subs:null}
-            ],
-            activeTab: 'resumen',
-            activeSub: null,
-            datos: { ing:{}, fij:{}, var:{}, tar:[], pre:[], metas:{}, aho:{}, pres:{}, hist:[], tipoCambio: 1350 },
-            
-			async actualizarDolar() {
-    try {
-        const response = await fetch('https://dolarapi.com/v1/dolares/oficial');
-        const data = await response.json();
-        const valorVenta = data.venta;
-        
-        document.getElementById('tipoCambio').value = valorVenta;
-        this.datos.tipoCambio = valorVenta;
-        this.guardar();
-        this.actualizar();
-        alert(`✅ Dólar actualizado: $${this.formatearPesos(valorVenta)}`);
-    } catch (error) {
-        alert('❌ No se pudo obtener la cotización. Verifica tu conexión a internet.');
-    }
-},
-            formatearPesos(num) {
-                return new Intl.NumberFormat('es-AR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                }).format(num);
-				
-            },
-            
-            convertirARS(monto, moneda) {
-                if (moneda === 'USD') {
-                    return monto * this.datos.tipoCambio;
-                }
-                return monto;
-            },
-            
-            guardarTipoCambio() {
-                const tc = parseFloat(document.getElementById('tipoCambio').value);
-                if (tc && tc > 0) {
-                    this.datos.tipoCambio = tc;
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            init() {
-                const hoy = new Date();
-                this.llenarSelects();
-                document.getElementById('mesActual').value = hoy.getMonth();
-                document.getElementById('anioActual').value = hoy.getFullYear();
-                document.getElementById('tar-fecha').valueAsDate = hoy;
-                this.crearTabs();
-                this.cargarDatos();
-                document.getElementById('tipoCambio').value = this.datos.tipoCambio;
-                this.actualizar();
-                if (!localStorage.getItem('aura_visited')) {
-                    setTimeout(() => this.mostrarAyuda(), 500);
-                    localStorage.setItem('aura_visited', '1');
-                }
-            },
-            
-            crearTabs() {
-                const tabsC = document.getElementById('tabsContainer');
-                const subsC = document.getElementById('subtabsContainer');
-                
-                this.tabs.forEach((tab, i) => {
-                    const btn = document.createElement('button');
-                    btn.className = `tab ${i===0?'active':''}`;
-                    btn.textContent = tab.name;
-                    btn.onclick = () => this.cambiarTab(tab.id, tab.subs);
-                    tabsC.appendChild(btn);
-                    
-                    if (tab.subs) {
-                        const subDiv = document.createElement('div');
-                        subDiv.className = 'subtabs';
-                        subDiv.id = `subtabs-${tab.id}`;
-                        tab.subs.forEach((sub, j) => {
-                            const subBtn = document.createElement('button');
-                            subBtn.className = `subtab ${j===0?'active':''}`;
-                            subBtn.textContent = sub.name;
-                            subBtn.onclick = () => this.cambiarSubTab(tab.id, sub.id, subBtn);
-                            subDiv.appendChild(subBtn);
-                        });
-                        subsC.appendChild(subDiv);
-                    }
-                });
-            },
-            
-            cambiarTab(id, subs) {
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.subtabs').forEach(s => s.classList.remove('active'));
-                
-                event.target.classList.add('active');
-                this.activeTab = id;
-                
-                if (subs) {
-                    document.getElementById(`subtabs-${id}`).classList.add('active');
-                    const firstSub = subs[0].id;
-                    this.activeSub = firstSub;
-                    document.getElementById(`tab-${id}-${firstSub}`).classList.add('active');
-                    
-                    if (id === 'deudas' && firstSub === 'tarjetas') this.resumenTit();
-                } else {
-                    this.activeSub = null;
-                    document.getElementById(`tab-${id}`).classList.add('active');
-                    
-                    if (id === 'analisis') { this.graficos(); this.comparar(); }
-                    if (id === 'historial') this.mostrarHist();
-                }
-            },
-            
-            cambiarSubTab(parent, sub, el) {
-                document.querySelectorAll(`#subtabs-${parent} .subtab`).forEach(s => s.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                
-                el.classList.add('active');
-                this.activeSub = sub;
-                document.getElementById(`tab-${parent}-${sub}`).classList.add('active');
-                
-                if (parent === 'deudas' && sub === 'tarjetas') this.resumenTit();
-            },
-            
-            llenarSelects() {
-                const mSel = document.getElementById('mesActual');
-                this.meses.forEach((m,i) => {
-                    const opt = document.createElement('option');
-                    opt.value = i;
-                    opt.textContent = m;
-                    mSel.appendChild(opt);
-                });
-                ['ing','fij','var'].forEach(t => {
-                    const sel = document.getElementById(`${t}-cat`);
-                    this.cat[t].forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.substring(3);
-                        opt.textContent = c;
-                        sel.appendChild(opt);
-                    });
-                });
-                const pSel = document.getElementById('pres-cat');
-                this.cat.var.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c.substring(3);
-                    opt.textContent = c;
-                    pSel.appendChild(opt);
-                });
-            },
-            
-            getMes() {
-                return `${document.getElementById('anioActual').value}-${document.getElementById('mesActual').value}`;
-            },
-            
-            addHist(txt) {
-                this.datos.hist.unshift({fecha: new Date().toLocaleString('es-AR'), txt});
-                if (this.datos.hist.length > 50) this.datos.hist.pop();
-            },
-            
-            add(tipo) {
-                const nom = document.getElementById(`${tipo}-nombre`).value;
-                const monto = parseFloat(document.getElementById(`${tipo}-monto`).value);
-                const cat = document.getElementById(`${tipo}-cat`).value;
-                const col = document.getElementById(`${tipo}-color`).value;
-                const moneda = document.getElementById(`${tipo}-moneda`).value;
-                if (!nom || !monto) return alert('⚠️ Completa los campos');
-                const mk = this.getMes();
-                if (!this.datos[tipo][mk]) this.datos[tipo][mk] = [];
-                this.datos[tipo][mk].push({nom,monto,cat,col,moneda});
-                const montoARS = this.convertirARS(monto, moneda);
-                this.addHist(`${tipo}: ${nom} - ${this.formatearPesos(montoARS)}${moneda==='USD'?' (USD)':''}`);
-                document.getElementById(`${tipo}-nombre`).value = '';
-                document.getElementById(`${tipo}-monto`).value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            del(tipo, idx) {
-                const mk = this.getMes();
-                if (confirm(`¿Eliminar "${this.datos[tipo][mk][idx].nom}"?`)) {
-                    this.addHist(`Eliminado: ${this.datos[tipo][mk][idx].nom}`);
-                    this.datos[tipo][mk].splice(idx, 1);
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            addTarjeta() {
-                const nom = document.getElementById('tar-nombre').value;
-                const tit = document.getElementById('tar-titular').value;
-                const monto = parseFloat(document.getElementById('tar-monto').value);
-                const cuotas = parseInt(document.getElementById('tar-cuotas').value);
-                const fecha = document.getElementById('tar-fecha').value;
-                const moneda = document.getElementById('tar-moneda').value;
-                if (!nom || !tit || !monto || !cuotas || !fecha) return alert('⚠️ Completa los campos');
-                this.datos.tar.push({nom,tit,monto,cuotas,pag:0,fecha,moneda});
-                const montoARS = this.convertirARS(monto, moneda);
-                this.addHist(`Tarjeta: ${nom} - ${this.formatearPesos(montoARS)} en ${cuotas} cuotas${moneda==='USD'?' (USD)':''}`);
-                document.getElementById('tar-nombre').value = '';
-                document.getElementById('tar-titular').value = '';
-                document.getElementById('tar-monto').value = '';
-                document.getElementById('tar-cuotas').value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            pagarTar(idx) {
-                if (this.datos.tar[idx].pag < this.datos.tar[idx].cuotas) {
-                    this.datos.tar[idx].pag++;
-                    this.addHist(`Cuota pagada: ${this.datos.tar[idx].nom}`);
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            delTar(idx) {
-                if (confirm(`¿Eliminar "${this.datos.tar[idx].nom}"?`)) {
-                    this.addHist(`Tarjeta eliminada: ${this.datos.tar[idx].nom}`);
-                    this.datos.tar.splice(idx, 1);
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            addPrestamo() {
-                const nom = document.getElementById('pre-nombre').value;
-                const ent = document.getElementById('pre-entidad').value;
-                const monto = parseFloat(document.getElementById('pre-monto').value);
-                const cuotas = parseInt(document.getElementById('pre-cuotas').value);
-                const moneda = document.getElementById('pre-moneda').value;
-                if (!nom || !ent || !monto || !cuotas) return alert('⚠️ Completa los campos');
-                this.datos.pre.push({nom,ent,monto,cuotas,pag:0,moneda});
-                const montoARS = this.convertirARS(monto, moneda);
-                this.addHist(`Préstamo: ${nom} - ${this.formatearPesos(montoARS)}${moneda==='USD'?' (USD)':''}`);
-                document.getElementById('pre-nombre').value = '';
-                document.getElementById('pre-entidad').value = '';
-                document.getElementById('pre-monto').value = '';
-                document.getElementById('pre-cuotas').value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            pagarPre(idx) {
-                if (this.datos.pre[idx].pag < this.datos.pre[idx].cuotas) {
-                    this.datos.pre[idx].pag++;
-                    this.addHist(`Cuota préstamo pagada: ${this.datos.pre[idx].nom}`);
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            delPre(idx) {
-                if (confirm(`¿Eliminar "${this.datos.pre[idx].nom}"?`)) {
-                    this.addHist(`Préstamo eliminado: ${this.datos.pre[idx].nom}`);
-                    this.datos.pre.splice(idx, 1);
-                    this.guardar();
-                    this.actualizar();
-                }
-            },
-            
-            addMeta() {
-                const nom = document.getElementById('meta-nombre').value;
-                const monto = parseFloat(document.getElementById('meta-monto').value);
-                if (!nom || !monto) return alert('⚠️ Completa los campos');
-                const mk = this.getMes();
-                if (!this.datos.metas[mk]) this.datos.metas[mk] = [];
-                this.datos.metas[mk].push({nom,monto});
-                document.getElementById('meta-nombre').value = '';
-                document.getElementById('meta-monto').value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            addAhorro() {
-                const nom = document.getElementById('aho-nombre').value;
-                const monto = parseFloat(document.getElementById('aho-monto').value);
-                if (!nom || !monto) return alert('⚠️ Completa los campos');
-                const mk = this.getMes();
-                if (!this.datos.aho[mk]) this.datos.aho[mk] = [];
-                this.datos.aho[mk].push({nom,monto});
-                document.getElementById('aho-nombre').value = '';
-                document.getElementById('aho-monto').value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            addPresupuesto() {
-                const cat = document.getElementById('pres-cat').value;
-                const monto = parseFloat(document.getElementById('pres-monto').value);
-                if (!cat || !monto) return alert('⚠️ Completa los campos');
-                const mk = this.getMes();
-                if (!this.datos.pres[mk]) this.datos.pres[mk] = {};
-                this.datos.pres[mk][cat] = monto;
-                document.getElementById('pres-monto').value = '';
-                this.guardar();
-                this.actualizar();
-            },
-            
-            calcTar(a, m) {
-                let t = 0;
-                this.datos.tar.forEach(x => {
-                    if (x.pag < x.cuotas) {
-                        const ini = new Date(x.fecha);
-                        const con = new Date(a, m, 1);
-                        const mT = (con.getFullYear() - ini.getFullYear()) * 12 + (con.getMonth() - ini.getMonth());
-                        if (mT >= 0 && mT < x.cuotas) {
-                            const montoARS = this.convertirARS(x.monto, x.moneda || 'ARS');
-                            t += montoARS / x.cuotas;
-                        }
-                    }
-                });
-                return t;
-            },
-            
-            calcPre() {
-                return this.datos.pre.filter(p => p.pag < p.cuotas).reduce((s, p) => {
-                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
-                    return s + montoARS / p.cuotas;
-                }, 0);
-            },
-            
-            mostrarLista(tipo) {
-                const mk = this.getMes();
-                const lista = this.datos[tipo][mk] || [];
-                const c = document.getElementById(`lista-${tipo}`);
-                if (lista.length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay registros</p>';
-                    return;
-                }
-                c.innerHTML = lista.map((it, i) => {
-                    const ico = this.cat[tipo].find(x => x.includes(it.cat))?.split(' ')[0] || '📌';
-                    const montoARS = this.convertirARS(it.monto, it.moneda || 'ARS');
-                    const badge = it.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
-                    return `<div class="item"><div class="item-info"><div class="item-name"><span style="font-size:18px;">${ico}</span><span>${it.nom}${badge}</span></div><span class="item-tag" style="background:${it.col}">${it.cat}</span></div><div class="item-amount">${this.formatearPesos(montoARS)}</div><button class="btn btn-danger" onclick="app.del('${tipo}',${i})">×</button></div>`;
-                }).join('');
-            },
-            
-            mostrarTar() {
-                const c = document.getElementById('lista-tar');
-                if (this.datos.tar.length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay compras</p>';
-                    return;
-                }
-                c.innerHTML = this.datos.tar.map((t, i) => {
-                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
-                    const cuota = montoARS / t.cuotas;
-                    const saldo = montoARS - (cuota * t.pag);
-                    const b = t.pag === t.cuotas ? 'success' : t.pag > 0 ? 'warning' : 'danger';
-                    const badge = t.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
-                    return `<div class="item"><div class="item-info"><div class="item-name">💳 ${t.nom}${badge}</div><small style="color:var(--text-light);font-size:11px;">${t.tit} | Cuota: ${this.formatearPesos(cuota)}</small></div><div style="text-align:center;"><strong>${t.pag}/${t.cuotas}</strong><br><small style="font-size:10px;">cuotas</small></div><div style="color:var(--danger);font-weight:700;">${this.formatearPesos(saldo)}</div><span class="badge badge-${b}">${t.pag===t.cuotas?'Pagado':'En curso'}</span><div style="display:flex;gap:6px;flex-wrap:wrap;">${t.pag<t.cuotas?`<button class="btn btn-success" onclick="app.pagarTar(${i})">Pagar</button>`:''}<button class="btn btn-danger" onclick="app.delTar(${i})">×</button></div></div>`;
-                }).join('');
-            },
-            
-            mostrarPre() {
-                const c = document.getElementById('lista-pre');
-                if (this.datos.pre.length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay préstamos</p>';
-                    return;
-                }
-                c.innerHTML = this.datos.pre.map((p, i) => {
-                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
-                    const cuota = montoARS / p.cuotas;
-                    const saldo = montoARS - (cuota * p.pag);
-                    const b = p.pag === p.cuotas ? 'success' : p.pag > 0 ? 'warning' : 'danger';
-                    const badge = p.moneda === 'USD' ? '<span class="currency-badge">USD</span>' : '';
-                    return `<div class="item"><div class="item-info"><div class="item-name">🏦 ${p.nom}${badge}</div><small style="color:var(--text-light);font-size:11px;">${p.ent} | Cuota: ${this.formatearPesos(cuota)}</small></div><div style="text-align:center;"><strong>${p.pag}/${p.cuotas}</strong><br><small style="font-size:10px;">cuotas</small></div><div style="color:var(--danger);font-weight:700;">${this.formatearPesos(saldo)}</div><span class="badge badge-${b}">${p.pag===p.cuotas?'Pagado':'En curso'}</span><div style="display:flex;gap:6px;flex-wrap:wrap;">${p.pag<p.cuotas?`<button class="btn btn-success" onclick="app.pagarPre(${i})">Pagar</button>`:''}<button class="btn btn-danger" onclick="app.delPre(${i})">×</button></div></div>`;
-                }).join('');
-            },
-            
-            mostrarAho() {
-                const mk = this.getMes();
-                const metas = this.datos.metas[mk] || [];
-                const aho = this.datos.aho[mk] || [];
-                const c = document.getElementById('lista-aho');
-                let html = '';
-                if (metas.length > 0) {
-                    html += '<h4 style="color:var(--primary-dark);margin-bottom:10px;font-size:14px;">🎯 Metas</h4>';
-                    html += metas.map(m => `<div class="item"><div>${m.nom}</div><div class="item-amount">${this.formatearPesos(m.monto)}</div></div>`).join('');
-                }
-                if (aho.length > 0) {
-                    html += '<h4 style="color:var(--primary-dark);margin:15px 0 10px;font-size:14px;">💰 Ahorros</h4>';
-                    html += aho.map(a => `<div class="item"><div>${a.nom}</div><div class="item-amount">${this.formatearPesos(a.monto)}</div></div>`).join('');
-                }
-                c.innerHTML = html || '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay registros</p>';
-                
-                const metaT = metas.reduce((s, m) => s + m.monto, 0);
-                const ahoT = aho.reduce((s, a) => s + a.monto, 0);
-                const prog = document.getElementById('progresoAhorro');
-                if (metaT === 0) {
-                    prog.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:15px;font-size:13px;">Define una meta</p>';
-                    return;
-                }
-                const porc = Math.min((ahoT / metaT) * 100, 100);
-                const diff = metaT - ahoT;
-                prog.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;"><span><strong>Meta:</strong> ${this.formatearPesos(metaT)}</span><span><strong>Ahorrado:</strong> ${this.formatearPesos(ahoT)}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${porc}%">${porc.toFixed(0)}%</div></div><div style="text-align:center;margin-top:10px;color:${diff>0?'var(--danger)':'var(--success)'};font-weight:700;font-size:14px;">${diff>0?`Faltan ${this.formatearPesos(diff)}`:'¡Meta alcanzada! 🎉'}</div>`;
-            },
-            
-            mostrarPres() {
-                const mk = this.getMes();
-                const pres = this.datos.pres[mk] || {};
-                const vars = this.datos.var[mk] || [];
-                const c = document.getElementById('listaPresupuestos');
-                if (Object.keys(pres).length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay presupuestos</p>';
-                    return;
-                }
-                const gCat = {};
-                vars.forEach(v => {
-                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
-                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
-                });
-                c.innerHTML = Object.entries(pres).map(([cat, lim]) => {
-                    const gast = gCat[cat] || 0;
-                    const porc = Math.min((gast / lim) * 100, 100);
-                    const disp = lim - gast;
-                    const ico = this.cat.var.find(x => x.includes(cat))?.split(' ')[0] || '📌';
-                    let col = 'var(--success)', msg = 'OK ✓';
-                    if (porc > 100) { col = 'var(--danger)'; msg = '¡Superado!'; }
-                    else if (porc > 90) { col = 'var(--danger)'; msg = '¡Cerca!'; }
-                    else if (porc > 70) { col = 'var(--warning)'; msg = 'Cuidado'; }
-                    return `<div style="background:var(--bg);padding:15px;border-radius:10px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;font-size:13px;"><strong>${ico} ${cat}</strong><div style="text-align:right;"><div>Gastado: <strong style="color:${col};">${this.formatearPesos(gast)}</strong></div><div style="font-size:11px;color:var(--text-light);">Límite: ${this.formatearPesos(lim)}</div></div></div><div class="progress-bar" style="height:24px;"><div class="progress-fill" style="width:${porc}%;background:${col};font-size:11px;">${porc.toFixed(0)}%</div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span style="color:${col};font-weight:600;">${msg}</span><span style="color:${disp>=0?'var(--success)':'var(--danger)'};font-weight:600;">${disp>=0?'Disponible:':'Excedido:'} ${this.formatearPesos(Math.abs(disp))}</span></div></div>`;
-                }).join('');
-            },
-            
-            resumenTit() {
-                const tit = {};
-                this.datos.tar.forEach(t => {
-                    if (!tit[t.tit]) tit[t.tit] = {cuota:0,saldo:0,cant:0};
-                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
-                    const c = montoARS / t.cuotas;
-                    tit[t.tit].cant++;
-                    if (t.pag < t.cuotas) {
-                        tit[t.tit].cuota += c;
-                        tit[t.tit].saldo += montoARS - (c * t.pag);
-                    }
-                });
-                const c = document.getElementById('resumenTitulares');
-                if (Object.keys(tit).length === 0) {
-                    c.innerHTML = '';
-                    return;
-                }
-                c.innerHTML = Object.entries(tit).map(([n, d]) => `<div style="background:var(--bg);padding:18px;border-radius:10px;margin-bottom:10px;"><h4 style="color:var(--primary-dark);margin-bottom:12px;font-size:15px;">👤 ${n}</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;"><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Compras</div><div style="font-size:22px;font-weight:700;">${d.cant}</div></div><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Cuota mensual</div><div style="font-size:22px;font-weight:700;color:var(--primary);">${this.formatearPesos(d.cuota)}</div></div><div><div style="color:var(--text-light);font-size:11px;margin-bottom:4px;">Saldo</div><div style="font-size:22px;font-weight:700;color:var(--danger);">${this.formatearPesos(d.saldo)}</div></div></div></div>`).join('');
-            },
-            
-            actualizarResumen() {
-                const mk = this.getMes();
-                const m = parseInt(document.getElementById('mesActual').value);
-                const a = parseInt(document.getElementById('anioActual').value);
-                
-                const ing = (this.datos.ing[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
-                const fij = (this.datos.fij[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
-                const varG = (this.datos.var[mk] || []).reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0);
-                const tar = this.calcTar(a, m);
-                const pre = this.calcPre();
-                const gast = fij + varG + tar + pre;
-                const bal = ing - gast;
-                
-                const dTar = this.datos.tar.reduce((s, t) => {
-                    const montoARS = this.convertirARS(t.monto, t.moneda || 'ARS');
-                    return s + (montoARS - (montoARS / t.cuotas * t.pag));
-                }, 0);
-                const dPre = this.datos.pre.reduce((s, p) => {
-                    const montoARS = this.convertirARS(p.monto, p.moneda || 'ARS');
-                    return s + (montoARS - (montoARS / p.cuotas * p.pag));
-                }, 0);
-                
-                document.getElementById('resumenCards').innerHTML = `
-                    <div class="card" style="background:linear-gradient(135deg,#2e7d32,#66bb6a);"><div class="card-title">Ingresos</div><div class="card-value">${this.formatearPesos(ing)}</div></div>
-                    <div class="card" style="background:linear-gradient(135deg,#c62828,#ef5350);"><div class="card-title">Gastos</div><div class="card-value">${this.formatearPesos(gast)}</div></div>
-                    <div class="card" style="background:linear-gradient(135deg,${bal>=0?'#f57c00':'#c62828'},${bal>=0?'#ffb74d':'#ef5350'});"><div class="card-title">Balance</div><div class="card-value">${this.formatearPesos(bal)}</div></div>
-                    <div class="card" style="background:linear-gradient(135deg,#1565c0,#42a5f5);"><div class="card-title">Deuda Tarjetas</div><div class="card-value">${this.formatearPesos(dTar)}</div></div>
-                    <div class="card" style="background:linear-gradient(135deg,#6a1b9a,#ab47bc);"><div class="card-title">Deuda Préstamos</div><div class="card-value">${this.formatearPesos(dPre)}</div></div>`;
-                
-                const max = Math.max(fij, varG, tar, pre) || 1;
-                const total = fij + varG + tar + pre;
-                
-                document.getElementById('desglose').innerHTML = `
-                    <div class="expense-card">
-                        <div class="expense-header">
-                            <span class="expense-title">Gastos Fijos</span>
-                            <span class="expense-icon">🏠</span>
-                        </div>
-                        <div class="expense-amount">${this.formatearPesos(fij)}</div>
-                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(fij/max)*100}%"></div></div>
-                        <div class="expense-percent">${total > 0 ? ((fij/total)*100).toFixed(1) : 0}% del total</div>
-                    </div>
-                    <div class="expense-card">
-                        <div class="expense-header">
-                            <span class="expense-title">Gastos Variables</span>
-                            <span class="expense-icon">🛒</span>
-                        </div>
-                        <div class="expense-amount">${this.formatearPesos(varG)}</div>
-                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(varG/max)*100}%"></div></div>
-                        <div class="expense-percent">${total > 0 ? ((varG/total)*100).toFixed(1) : 0}% del total</div>
-                    </div>
-                    <div class="expense-card">
-                        <div class="expense-header">
-                            <span class="expense-title">Tarjetas</span>
-                            <span class="expense-icon">💳</span>
-                        </div>
-                        <div class="expense-amount">${this.formatearPesos(tar)}</div>
-                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(tar/max)*100}%"></div></div>
-                        <div class="expense-percent">${total > 0 ? ((tar/total)*100).toFixed(1) : 0}% del total</div>
-                    </div>
-                    <div class="expense-card">
-                        <div class="expense-header">
-                            <span class="expense-title">Préstamos</span>
-                            <span class="expense-icon">🏦</span>
-                        </div>
-                        <div class="expense-amount">${this.formatearPesos(pre)}</div>
-                        <div class="expense-bar"><div class="expense-bar-fill" style="width:${(pre/max)*100}%"></div></div>
-                        <div class="expense-percent">${total > 0 ? ((pre/total)*100).toFixed(1) : 0}% del total</div>
-                    </div>
-                `;
-                
-                this.alertas(mk, ing, gast, bal, fij, varG);
-            },
-            
-            alertas(mk, ing, gast, bal, fij, varG) {
-                const al = [];
-                if (gast > ing * 0.9 && ing > 0) al.push('<div class="alert alert-warning"><strong>⚠️ Alto nivel de gastos</strong><br>Tus gastos superan el 90% de tus ingresos.</div>');
-                if (bal < 0) al.push('<div class="alert alert-danger"><strong>🚨 Balance negativo</strong><br>Estás gastando más de lo que ingresas este mes.</div>');
-                
-                const pres = this.datos.pres[mk] || {};
-                const vars = this.datos.var[mk] || [];
-                const gCat = {};
-                vars.forEach(v => {
-                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
-                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
-                });
-                Object.entries(pres).forEach(([cat, lim]) => {
-                    if ((gCat[cat] || 0) > lim) {
-                        al.push(`<div class="alert alert-warning"><strong>⚠️ Presupuesto superado</strong><br>${cat}: excediste por ${this.formatearPesos((gCat[cat]||0) - lim)}</div>`);
-                    }
-                });
-                
-                const tarVenc = this.datos.tar.filter(t => (t.cuotas - t.pag) > 0 && (t.cuotas - t.pag) <= 3);
-                if (tarVenc.length > 0) al.push(`<div class="alert alert-info"><strong>ℹ️ Cuotas finalizando</strong><br>${tarVenc.length} compra(s) en cuotas finalizan en ≤3 meses.</div>`);
-                
-                const preVenc = this.datos.pre.filter(p => (p.cuotas - p.pag) > 0 && (p.cuotas - p.pag) <= 3);
-                if (preVenc.length > 0) al.push(`<div class="alert alert-info"><strong>ℹ️ Préstamos finalizando</strong><br>${preVenc.length} préstamo(s) finalizan en ≤3 meses.</div>`);
-                
-                const metas = this.datos.metas[mk] || [];
-                const aho = this.datos.aho[mk] || [];
-                const metaT = metas.reduce((s, m) => s + m.monto, 0);
-                const ahoT = aho.reduce((s, a) => s + a.monto, 0);
-                if (metaT > 0 && ahoT < metaT * 0.5) al.push('<div class="alert alert-warning"><strong>⚠️ Meta de ahorro</strong><br>Llevas menos del 50% de tu meta de ahorro.</div>');
-                
-                const valoresVar = Object.values(this.datos.var);
-                if (valoresVar.length > 1) {
-                    const totales = valoresVar.map(mes => mes.reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0));
-                    const prom = totales.reduce((s, v) => s + v, 0) / totales.length;
-                    if (varG > prom * 1.5 && prom > 0) al.push('<div class="alert alert-warning"><strong>⚠️ Gasto inusual</strong><br>Tus gastos variables son 50% mayores al promedio.</div>');
-                }
-                
-                document.getElementById('alertas').innerHTML = al.length ? al.join('') : '<p style="text-align:center;color:var(--success);font-weight:700;font-size:14px;">✅ Todo en orden</p>';
-            },
-            
-            graficos() {
-                const mk = this.getMes();
-                const vars = this.datos.var[mk] || [];
-                const gCat = {};
-                vars.forEach(v => {
-                    const montoARS = this.convertirARS(v.monto, v.moneda || 'ARS');
-                    gCat[v.cat] = (gCat[v.cat] || 0) + montoARS;
-                });
-                const max1 = Math.max(...Object.values(gCat), 1);
-                document.getElementById('grafico1').innerHTML = Object.entries(gCat).map(([c, m]) => {
-                    const h = (m / max1) * 100;
-                    const ico = this.cat.var.find(x => x.includes(c))?.split(' ')[0] || '📌';
-                    return `<div class="chart-bar"><div style="font-size:10px;color:var(--text-light);font-weight:600;">${this.formatearPesos(m)}</div><div class="bar" style="height:${h}%;"></div><div class="bar-label">${ico}<br><span style="font-size:9px;">${c}</span></div></div>`;
-                }).join('') || '<p style="text-align:center;color:var(--text-light);padding:40px;font-size:13px;">Sin datos</p>';
-                
-                const a = document.getElementById('anioActual').value;
-                const evol = [];
-                for (let i = 0; i < 12; i++) {
-                    const m = `${a}-${i}`;
-                    const ing = (this.datos.ing[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
-                    const gas = (this.datos.fij[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
-                                (this.datos.var[m] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
-                    evol.push({m: this.meses[i].substring(0, 3), ing, gas});
-                }
-                const max2 = Math.max(...evol.map(e => Math.max(e.ing, e.gas)), 1);
-                document.getElementById('grafico2').innerHTML = evol.map(e => {
-                    const hI = (e.ing / max2) * 100;
-                    const hG = (e.gas / max2) * 100;
-                    return `<div class="chart-bar"><div style="font-size:9px;color:var(--success);font-weight:600;">${this.formatearPesos(e.ing)}</div><div class="bar" style="height:${hI}%;background:linear-gradient(to top,var(--success),#66bb6a);"></div><div class="bar" style="height:${hG}%;background:linear-gradient(to top,var(--danger),#ef5350);margin-top:3px;"></div><div style="font-size:9px;color:var(--danger);font-weight:600;">${this.formatearPesos(e.gas)}</div><div class="bar-label">${e.m}</div></div>`;
-                }).join('');
-            },
-            
-            proyectar() {
-                const mP = parseInt(document.getElementById('mesesProy').value);
-                const mA = parseInt(document.getElementById('mesActual').value);
-                const aA = parseInt(document.getElementById('anioActual').value);
-                const pIng = this.prom('ing');
-                const pFij = this.prom('fij');
-                const pVar = this.prom('var');
-                let proy = [];
-                let acum = 0;
-                for (let i = 1; i <= mP; i++) {
-                    const m = (mA + i) % 12;
-                    const a = aA + Math.floor((mA + i) / 12);
-                    const ing = pIng;
-                    const gas = pFij + pVar + this.calcTar(a, m) + this.calcPre();
-                    const bal = ing - gas;
-                    acum += bal;
-                    proy.push({m: this.meses[m], a, ing, gas, bal, acum});
-                }
-                const tI = proy.reduce((s, p) => s + p.ing, 0);
-                const tG = proy.reduce((s, p) => s + p.gas, 0);
-                const bF = proy[proy.length - 1].acum;
-                document.getElementById('resultadoProy').innerHTML = `<div class="cards" style="margin-top:15px;"><div class="card" style="background:linear-gradient(135deg,#2e7d32,#66bb6a);"><div class="card-title">Ing. Proy.</div><div class="card-value">${this.formatearPesos(tI)}</div></div><div class="card" style="background:linear-gradient(135deg,#c62828,#ef5350);"><div class="card-title">Gast. Proy.</div><div class="card-value">${this.formatearPesos(tG)}</div></div><div class="card" style="background:linear-gradient(135deg,${bF>=0?'#f57c00':'#c62828'},${bF>=0?'#ffb74d':'#ef5350'});"><div class="card-title">Bal. Acum.</div><div class="card-value">${this.formatearPesos(bF)}</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:15px;">${proy.map(p => `<div style="background:var(--bg);padding:16px;border-radius:10px;"><h3 style="color:var(--primary-dark);margin-bottom:12px;font-size:15px;font-weight:700;">${p.m} ${p.a}</h3><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Ingresos:</span><span style="color:var(--success);font-weight:700;">${this.formatearPesos(p.ing)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Gastos:</span><span style="color:var(--danger);font-weight:700;">${this.formatearPesos(p.gas)}</span></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--text-light);">Balance:</span><span style="color:${p.bal>=0?'var(--success)':'var(--danger)'};font-weight:700;">${this.formatearPesos(p.bal)}</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--primary);margin-top:6px;font-size:12px;"><strong>Acum.:</strong><strong style="color:${p.acum>=0?'var(--success)':'var(--danger)'};font-size:15px;">${this.formatearPesos(p.acum)}</strong></div></div>`).join('')}</div><div class="alert alert-info" style="margin-top:15px;font-size:12px;">📝 Proyección basada en promedios históricos + cuotas registradas.</div>`;
-            },
-            
-            prom(tipo) {
-                const vals = Object.values(this.datos[tipo]);
-                if (!vals.length) return 0;
-                const tots = vals.map(mes => mes.reduce((s, i) => s + this.convertirARS(i.monto, i.moneda || 'ARS'), 0));
-                return tots.reduce((s, v) => s + v, 0) / tots.length;
-            },
-            
-            comparar() {
-                const a = document.getElementById('anioActual').value;
-                document.getElementById('tablaComp').innerHTML = this.meses.map((mes, i) => {
-                    const mk = `${a}-${i}`;
-                    const ing = (this.datos.ing[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0);
-                    const gas = (this.datos.fij[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
-                                (this.datos.var[mk] || []).reduce((s, x) => s + this.convertirARS(x.monto, x.moneda || 'ARS'), 0) + 
-                                this.calcTar(parseInt(a), i) + this.calcPre();
-                    const bal = ing - gas;
-                    return `<tr><td><strong>${mes}</strong></td><td style="color:var(--success);font-weight:600;">${this.formatearPesos(ing)}</td><td style="color:var(--danger);font-weight:600;">${this.formatearPesos(gas)}</td><td style="color:${bal>=0?'var(--success)':'var(--danger)'};font-weight:700;">${this.formatearPesos(bal)}</td></tr>`;
-                }).join('');
-            },
-            
-            mostrarHist() {
-                const c = document.getElementById('listaHistorial');
-                if (this.datos.hist.length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:30px;font-size:13px;">No hay actividad</p>';
-                    return;
-                }
-                c.innerHTML = this.datos.hist.slice(0, 30).map(h => `<div style="background:var(--bg);padding:14px;border-radius:8px;border-left:4px solid var(--primary);margin-bottom:10px;"><div style="font-size:11px;color:var(--text-light);margin-bottom:4px;">${h.fecha}</div><div style="font-size:13px;color:var(--text);">${h.txt}</div></div>`).join('');
-            },
-            
-            actualizar() {
-                this.actualizarResumen();
-                ['ing','fij','var'].forEach(t => this.mostrarLista(t));
-                this.mostrarTar();
-                this.mostrarPre();
-                this.mostrarAho();
-                this.mostrarPres();
-            },
-            
-            mostrarAyuda() {
-                document.getElementById('modalAyuda').style.display = 'block';
-            },
-            
-            cerrarAyuda() {
-                document.getElementById('modalAyuda').style.display = 'none';
-            },
-            
-            exportar() {
-                const json = JSON.stringify(this.datos, null, 2);
-                const blob = new Blob([json], {type: 'application/json'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `auratech-finanzas-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                alert('✅ Datos exportados correctamente');
-            },
-            
-            importar(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        if (confirm('⚠️ ¿Reemplazar TODOS los datos actuales?')) {
-                            this.datos = JSON.parse(ev.target.result);
-                            if (!this.datos.tipoCambio) this.datos.tipoCambio = 1350;
-                            document.getElementById('tipoCambio').value = this.datos.tipoCambio;
-                            this.guardar();
-                            this.actualizar();
-                            alert('✅ Datos importados correctamente');
-                        }
-                    } catch {
-                        alert('❌ Error al importar el archivo');
-                    }
-                };
-                reader.readAsText(file);
-                e.target.value = '';
-            },
-            
-            guardar() {
-                localStorage.setItem('auratech_datos', JSON.stringify(this.datos));
-            },
-            
-            cargarDatos() {
-                const guardado = localStorage.getItem('auratech_datos');
-                if (guardado) {
-                    this.datos = JSON.parse(guardado);
-                    if (!this.datos.tipoCambio) this.datos.tipoCambio = 1350;
-                }
-            }
-        };
-        
-        window.onclick = (e) => {
-            if (e.target == document.getElementById('modalAyuda')) app.cerrarAyuda();
-        }
-        
-        window.addEventListener('DOMContentLoaded', () => app.init());
-    </script>
-	<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(registration => console.log('SW registrado'))
-      .catch(err => console.log('SW error:', err));
-  });
-}
-</script>
-</body>
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <meta name="theme-color" content="#00796b">
-    <title>Finanzas Pro | Auratech</title>
-	<link rel="manifest" href="manifest.json">
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<meta name="apple-mobile-web-app-title" content="Finanzas Pro">
-	<link rel="apple-touch-icon" href="https://i.postimg.cc/H8x4Ljzx/logo.jpg">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Auratech - Soluciones Informáticas Profesionales. Técnico especializado con respaldo UTN. Más de 12 años de experiencia.">
+    <meta name="keywords" content="reparación pc, armado pc, soporte técnico, avellaneda, buenos aires, finanzas pro">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tudominio.com">
+    <meta property="og:title" content="Auratech™ | Soluciones Informáticas Profesionales">
+    <meta property="og:description" content="Técnico especializado con respaldo UTN. Reparación, armado de PCs, soporte remoto y desarrollo de software en Avellaneda, Buenos Aires.">
+    <meta property="og:image" content="https://tudominio.com/logo.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://tudominio.com">
+    <meta property="twitter:title" content="Auratech™ | Soluciones Informáticas Profesionales">
+    <meta property="twitter:description" content="Técnico especializado con respaldo UTN. Reparación, armado de PCs, soporte remoto y desarrollo de software.">
+    <meta property="twitter:image" content="https://tudominio.com/logo.jpg">
+    
+    <title>Auratech™ | Soluciones Informáticas Profesionales</title>
+    
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "Auratech",
+        "image": "https://tudominio.com/logo.jpg",
+        "description": "Soluciones Informáticas Profesionales. Técnico especializado con respaldo UTN.",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Avellaneda",
+            "addressRegion": "Buenos Aires",
+            "addressCountry": "AR"
+        },
+        "telephone": "+54-911-4092-4916",
+        "priceRange": "$$",
+        "openingHours": "Mo-Fr 09:00-18:00, Sa 09:00-13:00"
+    }
+    </script>
+    
+    <!-- Google Analytics (reemplazar G-XXXXXXXXXX con tu ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DPHFHMWNHP"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #00796b; --primary-light: #48a999; --primary-dark: #004d40;
-            --secondary: #1565c0; --accent: #ffa000; --success: #2e7d32;
-            --danger: #c62828; --warning: #f57c00; --text: #212121;
-            --text-light: #757575; --bg: #ffffff; --bg-alt: #f5f5f5; --border: #e0e0e0;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-        .container { max-width: 1400px; margin: 0 auto; background: var(--bg); min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #031a30 0%, #1565c0 100%); color: white; padding: clamp(25px, 4vw, 40px) 20px; text-align: center; position: relative }
-        .logo-container { margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
-        .logo { max-width: 90px; max-height: 90px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
-        .brand h1 { font-family: 'Poppins', sans-serif; font-size: clamp(1.8rem, 4.5vw, 3rem); margin-bottom: 8px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .brand .tagline { font-size: clamp(0.85rem, 2vw, 0.95rem); opacity: 0.9; font-weight: 400; letter-spacing: 1px; }
-        .tabs { display: flex; background: var(--bg-alt); border-bottom: 2px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 100; }
-        .tab { padding: 16px 20px; cursor: pointer; border: none; background: transparent; font-size: 14px; font-weight: 600; color: var(--text-light); transition: all 0.3s; white-space: nowrap; border-bottom: 3px solid transparent; }
-        .tab:hover { background: rgba(0, 121, 107, 0.05); color: var(--primary); }
-        .tab.active { background: var(--bg); color: var(--primary); border-bottom-color: var(--primary); }
-        .subtabs { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 20px; gap: 8px; flex-wrap: wrap; position: sticky; top: 58px; z-index: 99; }
-        .subtabs.active { display: flex; }
-        .subtab { padding: 10px 18px; cursor: pointer; border: 2px solid var(--border); background: var(--bg-alt); font-size: 13px; font-weight: 600; color: var(--text); transition: all 0.3s; border-radius: 8px; }
-        .subtab:hover { border-color: var(--primary); color: var(--primary); background: var(--bg); }
-        .subtab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .content { padding: clamp(15px, 3vw, 30px); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.4s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .info-banner { background: linear-gradient(135deg, rgba(0, 121, 107, 0.08) 0%, rgba(21, 101, 192, 0.08) 100%); border-left: 4px solid var(--primary); padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; align-items: start; }
-        .info-banner h3 { color: var(--primary-dark); font-size: 15px; margin-bottom: 4px; }
-        .info-banner p { color: var(--text); font-size: 13px; line-height: 1.5; }
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 16px; margin-bottom: 20px; }
-        .card { color: white; padding: 20px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s; }
-        .card:hover { transform: translateY(-4px); }
-        .card-title { font-size: 11px; opacity: 0.9; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .card-value { font-size: clamp(22px, 4vw, 28px); font-weight: 700; }
-        .section { background: var(--bg-alt); padding: clamp(18px, 3vw, 25px); border-radius: 14px; margin-bottom: 18px; }
-        .section-title { font-size: clamp(16px, 3vw, 19px); font-weight: 700; color: var(--primary-dark); margin-bottom: 16px; }
-        .expense-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; }
-        .expense-card { background: var(--bg); padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: all 0.3s; border-left: 4px solid var(--primary); }
-        .expense-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
-        .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .expense-title { font-size: 14px; font-weight: 600; color: var(--text); }
-        .expense-icon { font-size: 24px; }
-        .expense-amount { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
-        .expense-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
-        .expense-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 0.8s; border-radius: 4px; }
-        .expense-percent { font-size: 12px; color: var(--text-light); margin-top: 6px; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 10px; margin-bottom: 10px; }
-        input, select { padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 13px; transition: all 0.3s; background: var(--bg); font-family: inherit; }
-        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1); }
-        input[type="color"] { padding: 4px; height: 42px; cursor: pointer; }
-        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.3s; font-family: inherit; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
-        .btn-danger { background: var(--danger); color: white; padding: 8px 16px; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-info { background: var(--secondary); color: white; }
-        .btn-warning { background: var(--accent); color: white; }
-        .item-list { background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 16px; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; transition: background 0.2s; border-radius: 6px; }
-        .item:hover { background: var(--bg-alt); }
-        .item:last-child { border-bottom: none; }
-        .item-info { flex: 1; min-width: 160px; }
-        .item-name { font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        .item-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; color: white; margin-top: 4px; }
-        .item-amount { font-weight: 700; color: var(--primary); font-size: clamp(15px, 3vw, 17px); }
-        .progress-bar { background: var(--border); height: 32px; border-radius: 16px; overflow: hidden; margin-top: 10px; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--primary)); transition: width 0.8s; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px; }
-        .alert { padding: 14px 18px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; line-height: 1.5; }
-        .alert-info { background: #e3f2fd; color: #0d47a1; border-left: 4px solid var(--secondary); }
-        .alert-warning { background: #fff3e0; color: #e65100; border-left: 4px solid var(--warning); }
-        .alert-danger { background: #ffebee; color: #c62828; border-left: 4px solid var(--danger); }
-        .badge { display: inline-block; padding: 4px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
-        .badge-success { background: #c8e6c9; color: #1b5e20; }
-        .badge-warning { background: #fff3e0; color: #e65100; }
-        .badge-danger { background: #ffcdd2; color: #b71c1c; }
-        .chart-bars { display: flex; align-items: flex-end; justify-content: space-around; height: 260px; gap: 6px; padding: 15px 0; border-bottom: 2px solid var(--border); overflow-x: auto; }
-        .chart-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 45px; }
-        .bar { width: 100%; max-width: 60px; background: linear-gradient(to top, var(--primary), var(--primary-light)); border-radius: 6px 6px 0 0; transition: all 0.5s; min-height: 15px; animation: growUp 0.8s; }
-        @keyframes growUp { from { height: 0; } }
-        .bar:hover { opacity: 0.8; }
-        .bar-label { font-size: 10px; font-weight: 600; color: var(--text); text-align: center; }
-        .comparison-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg); border-radius: 10px; overflow: hidden; }
-        .comparison-table th, .comparison-table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-        .comparison-table th { background: var(--primary); color: white; font-weight: 600; text-transform: uppercase; font-size: 10px; }
-        .comparison-table tr:hover { background: var(--bg-alt); }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
-        .modal-content { background: var(--bg); margin: 5% auto; padding: clamp(25px, 5vw, 35px); border-radius: 16px; width: 90%; max-width: 550px; max-height: 85vh; overflow-y: auto; }
-        .modal-header { font-size: clamp(20px, 4vw, 24px); font-weight: 700; color: var(--primary-dark); margin-bottom: 16px; text-align: center; }
-        .modal-body { font-size: 14px; color: var(--text); line-height: 1.7; }
-        .modal-body ul { margin: 14px 0; padding-left: 18px; }
-        .modal-body li { margin-bottom: 8px; }
-        .currency-badge { display: inline-block; padding: 2px 6px; background: var(--accent); color: white; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+
+        :root {
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --secondary: #1a73e8;
+            --dark-bg: #0a0e27;
+            --dark-bg-2: #141b3d;
+            --dark-bg-3: #1e2749;
+            --text: #ffffff;
+            --text-light: #b0b8d4;
+            --accent: #00ff88;
+            --gradient: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            font-size: 15px;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-toggle {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-toggle span {
+            width: 25px;
+            height: 3px;
+            background: var(--text);
+            border-radius: 3px;
+            transition: 0.3s;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 100px 20px 60px;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -250px;
+            right: -250px;
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .hero-content {
+            max-width: 800px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-logo {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 30px;
+            filter: drop-shadow(0 10px 30px rgba(0, 212, 255, 0.3));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .hero-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            margin-bottom: 15px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .hero-brand {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            color: var(--text-light);
+            margin-bottom: 25px;
+            font-weight: 300;
+            font-style: italic;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--text-light);
+            margin-bottom: 40px;
+            line-height: 1.8;
+        }
+
+        /* Botón flotante subir */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 999;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+            border: none;
+        }
+
+        .scroll-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 25px rgba(0, 212, 255, 0.6);
+        }
+
+        .scroll-to-top svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--dark-bg);
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--dark-bg);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0, 212, 255, 0.6);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: var(--dark-bg);
+        }
+
+        /* Secciones */
+        section {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800;
+            margin-bottom: 60px;
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: var(--gradient);
+            border-radius: 2px;
+        }
+
+        /* Servicios */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .service-card {
+            background: var(--dark-bg-2);
+            padding: 35px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .service-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .service-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .service-card h3 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: var(--text);
+        }
+
+        .service-card p {
+            color: var(--text-light);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .service-card {
+            cursor: pointer;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .service-card:active {
+            transform: translateY(-2px);
+        }
+
+        /* Modal de servicios */
+        .service-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .service-modal.active {
+            display: flex;
+        }
+
+        .modal-content-service {
+            background: var(--dark-bg-2);
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header-service {
+            padding: 30px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+            position: sticky;
+            top: 0;
+            background: var(--dark-bg-2);
+            z-index: 1;
+        }
+
+        .modal-header-service h3 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 35px;
+            height: 35px;
+            border: none;
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--primary);
+            color: var(--dark-bg);
+            transform: rotate(90deg);
+        }
+
+        .modal-body-service {
+            padding: 30px;
+        }
+
+        .modal-body-service h4 {
+            font-size: 18px;
+            margin: 25px 0 15px;
+            color: var(--primary);
+        }
+
+        .modal-body-service ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-body-service li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .modal-body-service li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .modal-body-service p {
+            color: var(--text-light);
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+
+        /* Finanzas Pro Destacado */
+        .finanzas-pro {
+            background: linear-gradient(135deg, var(--dark-bg-3) 0%, var(--dark-bg-2) 100%);
+            border-radius: 30px;
+            padding: 60px 40px;
+            margin: 80px auto;
+            border: 2px solid var(--primary);
+            box-shadow: 0 20px 60px rgba(0, 212, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .finanzas-pro::before {
+            content: '💰';
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.05;
+            right: -50px;
+            top: -50px;
+        }
+
+        .finanzas-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .finanzas-badge {
+            display: inline-block;
+            background: var(--gradient);
+            color: var(--dark-bg);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .finanzas-logo {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .finanzas-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 24px rgba(0, 212, 255, 0.3));
+        }
+
+        .finanzas-header h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 15px;
+        }
+
+        .finanzas-tagline {
+            font-size: 20px;
+            color: var(--text);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .finanzas-subtitle {
+            font-size: 16px;
+            color: var(--text-light);
+        }
+
+        .finanzas-pricing {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .pricing-option {
+            background: var(--dark-bg);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 20px;
+            padding: 35px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .pricing-option:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.3);
+        }
+
+        .pricing-featured {
+            border: 3px solid var(--primary);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient);
+            color: var(--dark-bg);
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .pricing-header {
+            margin-bottom: 20px;
+        }
+
+        .pricing-header h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .pricing-savings {
+            display: inline-block;
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .pricing-price {
+            margin: 25px 0;
+        }
+
+        .price-old {
+            display: block;
+            font-size: 20px;
+            color: var(--text-light);
+            text-decoration: line-through;
+            margin-bottom: 5px;
+        }
+
+        .price-amount {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .price-period {
+            font-size: 20px;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        .pricing-description {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .pricing-highlight {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            margin: 15px 0 20px;
+        }
+
+        .pricing-btn {
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .pricing-option {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .finanzas-footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .finanzas-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .finanzas-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .finanzas-feature-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .finanzas-feature h4 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .finanzas-feature p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Sobre Mí */
+        .about {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .about-image {
+            position: relative;
+        }
+
+        .about-photo {
+            width: 100%;
+            max-width: 300px;
+            aspect-ratio: 1;
+            border-radius: 20px;
+            background: var(--dark-bg-3);
+            border: 3px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            margin: 0 auto;
+        }
+
+        .about-content h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 25px;
+        }
+
+        .about-content p {
+            font-size: 17px;
+            color: var(--text-light);
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .credentials {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .credential {
+            background: var(--dark-bg-3);
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Testimonios */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .testimonial {
+            background: var(--dark-bg-2);
+            padding: 35px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.1);
+            position: relative;
+        }
+
+        .testimonial::before {
+            content: '"';
+            font-size: 80px;
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            color: var(--primary);
+            opacity: 0.2;
+            font-family: Georgia, serif;
+        }
+
+        .testimonial-text {
+            color: var(--text-light);
+            font-size: 16px;
+            margin-bottom: 20px;
+            font-style: italic;
+            position: relative;
+            z-index: 1;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .testimonial-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--dark-bg);
+        }
+
+        .testimonial-info h4 {
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .testimonial-info p {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        /* Placeholder para testimonios */
+        .testimonials-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--dark-bg-2);
+            border-radius: 20px;
+            border: 2px dashed rgba(0, 212, 255, 0.3);
+        }
+
+        .testimonials-placeholder p {
+            color: var(--text-light);
+            font-size: 16px;
+        }
+
+        /* Emprendimientos */
+        .emprendimientos {
+            background: transparent;
+            border-radius: 20px;
+            padding: 40px 20px;
+            border: none;
+            text-align: center;
+        }
+
+        .emprendimientos-subtitle {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .emprendimientos-grid {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .emprendimiento-card {
+            background: var(--dark-bg-2);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 0 1 200px;
+        }
+
+        .emprendimiento-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 25px rgba(0, 212, 255, 0.2);
+        }
+
+        .emprendimiento-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+        }
+
+        .emprendimiento-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transform: scale(1.3);
+        }
+
+        /* CSS específico para la imagen de Chocolevel */
+        .emprendimiento-logo img {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .logo-matungos {
+            transform: scale(1.15) !important;
+        }
+
+        .logo-chocolevel {
+            transform: scale(1.3) !important;
+        }
+
+        .logo-ritual {
+            transform: scale(1.15) !important;
+        }
+
+        .emprendimiento-card h3 {
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .emprendimiento-tagline {
+            color: var(--text-light);
+            font-size: 0.8rem;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .emprendimiento-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-top: auto;
+            width: 100%;
+        }
+
+        .emprendimiento-cta::after {
+            content: '→';
+            transition: transform 0.3s;
+        }
+
+        .emprendimiento-card:hover .emprendimiento-cta::after {
+            transform: translateX(5px);
+        }
+
+        /* Contacto */
+        .contact {
+            background: var(--dark-bg-2);
+            border-radius: 30px;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .contact-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin: 40px 0;
+        }
+
+        .contact-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .contact-icon {
+            font-size: 40px;
+            color: var(--primary);
+        }
+
+        .contact-item h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .contact-item a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .contact-item a:hover {
+            color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--dark-bg);
+            border-top: 1px solid rgba(0, 212, 255, 0.1);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .header { padding: 25px 15px; }
-            .tab { padding: 14px 16px; font-size: 13px; }
-            .subtabs { top: 56px; }
-            .form-grid { grid-template-columns: 1fr; }
-            .cards { grid-template-columns: 1fr; }
-            .expense-grid { grid-template-columns: 1fr; }
-            .item { flex-direction: column; align-items: stretch; }
-            .item-amount { text-align: left; }
-            .btn { width: 100%; padding: 14px; }
-            .chart-bars { height: 200px; }
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                left: -100%;
+                width: 100%;
+                background: var(--dark-bg);
+                flex-direction: column;
+                padding: 30px;
+                gap: 20px;
+                border-top: 1px solid rgba(0, 212, 255, 0.1);
+                transition: left 0.3s;
+            }
+
+            .nav-links.active {
+                left: 0;
+            }
+
+            .nav-toggle {
+                display: flex;
+            }
+
+            .about {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .credentials {
+                justify-content: center;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Animaciones */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-container">
-                <img src="https://aleabbamonte.github.io/finanzas-pro-app/logo.png" class="logo" alt="Auratech Logo">
+    <!-- Header -->
+    <header>
+        <nav>
+            <a href="#" class="logo" id="logoLink">
+                <div class="logo-icon">
+                    <img src="logos/Logo-AuraTech.png">
+                </div>
+                <span>Auratech<sup style="font-size:12px">™</sup></span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#servicios">Servicios</a></li>
+                <li><a href="#finanzas">Finanzas Pro</a></li>
+                <li><a href="#about">Sobre Mí</a></li>
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+            <button class="nav-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-logo">
+                <img src="logos/Logo-AuraTech.png">
             </div>
-            <div class="brand">
-                <h1>FINANZAS PRO</h1>
-                <p class="tagline">by Auratech™</p>
+            <h1>Soluciones Informáticas<br>Profesionales</h1>
+            <p class="hero-brand">by Auratech™</p>
+            <p class="hero-subtitle">Técnico especializado con respaldo UTN. Más de 12 años transformando desafíos tecnológicos en soluciones efectivas.</p>
+            <div class="cta-buttons">
+                <a href="https://wa.me/5491140924916" class="btn btn-primary" target="_blank">
+                    📱 WhatsApp
+                </a>
+                <a href="#servicios" class="btn btn-secondary">
+                    Ver Servicios
+                </a>
             </div>
         </div>
-        
-        <div class="tabs" id="tabsContainer"></div>
-        <div id="subtabsContainer"></div>
-        
-        <div class="content">
-            <!-- RESUMEN -->
-            <div id="tab-resumen" class="tab-content active">
-                <div class="info-banner">
-                    <div>💡</div>
-                    <div><h3>Panel de Control</h3><p>Visualiza tu situación financiera actual. Usa los selectores para cambiar de mes/año.</p></div>
-                </div>
-                
-                <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;">
-                    <select id="mesActual" onchange="app.actualizar()" style="flex: 1; min-width: 130px;"></select>
-                    <input type="number" id="anioActual" min="2020" max="2030" onchange="app.actualizar()" style="flex: 1; min-width: 100px;">
-                <div style="display: flex; gap: 8px; align-items: center;">
-    				<label style="font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px;">
-        				<span style="font-size: 18px;">💲</span>
-        				USD:
-    				</label>
-    				<input type="number" id="tipoCambio" placeholder="1.350" step="0.01" onchange="app.guardarTipoCambio()" style="width: 100px; padding: 8px;">
-    				<button class="btn btn-success" onclick="app.actualizarDolar()" style="padding: 8px 16px; display: flex; align-items: center; gap: 6px; font-size: 12px;">
-        				<span style="font-size: 14px;">🔄</span>
-       					<span>Actualizar</span>
-    					</button>
-                </div>
-					<button class="btn" onclick="app.exportar()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Exportar</button>
-					<button class="btn" onclick="document.getElementById('importFile').click()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Importar</button>
-					<button class="btn" onclick="app.mostrarAyuda()" style="background: linear-gradient(135deg, #424242, #616161); color: white;">Info</button>
-                    <input type="file" id="importFile" style="display:none" accept=".json" onchange="app.importar(event)">
-                </div>
-                
-                <div class="cards" id="resumenCards"></div>
-                
-                <div class="section">
-                    <div class="section-title">📊 Distribución de Gastos</div>
-                    <div class="expense-grid" id="desglose"></div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">🔔 Alertas Inteligentes</div>
-                    <div id="alertas"></div>
-                </div>
+    </section>
+
+    <!-- Servicios -->
+    <section id="servicios">
+        <h2 class="section-title">Servicios</h2>
+        <div class="services-grid">
+            <div class="service-card fade-in" onclick="openServiceModal('armado')">
+                <span class="service-icon">🔨</span>
+                <h3>Armado de Equipos a Medida</h3>
+                <p>Armamos tu PC ideal según tu presupuesto y necesidades. Gaming, oficina, diseño o uso general.</p>
             </div>
-            
-            <!-- GESTIÓN - INGRESOS -->
-            <div id="tab-gestion-ingresos" class="tab-content">
-                <div class="info-banner">
-                    <div>💵</div>
-                    <div><h3>Ingresos</h3><p>Registra todos tus ingresos mensuales: salarios, freelance, inversiones, etc.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="ing-nombre" placeholder="Nombre">
-                        <select id="ing-cat"></select>
-                        <select id="ing-moneda">
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                        </select>
-                        <input type="number" id="ing-monto" placeholder="Monto" step="0.01">
-                        <input type="color" id="ing-color" value="#2e7d32">
-                        <button class="btn btn-primary" onclick="app.add('ing')">+ Agregar</button>
-                    </div>
-                    <div class="item-list" id="lista-ing"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('venta')">
+                <span class="service-icon">🖥️</span>
+                <h3>Venta de Equipos y Celulares</h3>
+                <p>PC nuevas o reacondicionadas con garantía. Celulares siempre nuevos en caja. Todo certificado y con respaldo Auratech.</p>
             </div>
-            
-            <!-- GESTIÓN - GASTOS FIJOS -->
-            <div id="tab-gestion-fijos" class="tab-content">
-                <div class="info-banner">
-                    <div>🏠</div>
-                    <div><h3>Gastos Fijos</h3><p>Registra gastos recurrentes mensuales: alquiler, servicios, suscripciones, seguros.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="fij-nombre" placeholder="Nombre">
-                        <select id="fij-cat"></select>
-                        <select id="fij-moneda">
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                        </select>
-                        <input type="number" id="fij-monto" placeholder="Monto" step="0.01">
-                        <input type="color" id="fij-color" value="#c62828">
-                        <button class="btn btn-primary" onclick="app.add('fij')">+ Agregar</button>
-                    </div>
-                    <div class="item-list" id="lista-fij"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('mantenimiento')">
+                <span class="service-icon">🔧</span>
+                <h3>Mantenimiento Preventivo</h3>
+                <p>Chequeos programados para mantener tu equipo en óptimas condiciones. Prevención que ahorra tiempo y dinero.</p>
             </div>
-            
-            <!-- GESTIÓN - GASTOS VARIABLES -->
-            <div id="tab-gestion-variables" class="tab-content">
-                <div class="info-banner">
-                    <div>🛒</div>
-                    <div><h3>Gastos Variables</h3><p>Registra gastos que cambian cada mes: alimentación, transporte, entretenimiento.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="var-nombre" placeholder="Nombre">
-                        <select id="var-cat"></select>
-                        <select id="var-moneda">
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                        </select>
-                        <input type="number" id="var-monto" placeholder="Monto" step="0.01">
-                        <input type="color" id="var-color" value="#f57c00">
-                        <button class="btn btn-primary" onclick="app.add('var')">+ Agregar</button>
-                    </div>
-                    <div class="item-list" id="lista-var"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('reparacion')">
+                <span class="service-icon">🛠️</span>
+                <h3>Reparación de Equipos</h3>
+                <p>Reparación de PC, Notebooks, Netbooks y Celulares. Diagnóstico gratuito y presupuesto sin cargo.</p>
             </div>
-            
-            <!-- DEUDAS - TARJETAS -->
-            <div id="tab-deudas-tarjetas" class="tab-content">
-                <div class="info-banner">
-                    <div>💳</div>
-                    <div><h3>Tarjetas - Compras en Cuotas</h3><p>Gestiona compras en cuotas. El sistema calcula automáticamente las cuotas mensuales.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="tar-nombre" placeholder="Concepto">
-                        <input type="text" id="tar-titular" placeholder="Titular">
-                        <select id="tar-moneda">
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                        </select>
-                        <input type="number" id="tar-monto" placeholder="Monto total" step="0.01">
-                        <input type="number" id="tar-cuotas" placeholder="Cuotas" min="1">
-                        <input type="date" id="tar-fecha">
-                        <button class="btn btn-primary" onclick="app.addTarjeta()">+ Agregar</button>
-                    </div>
-                    <div class="item-list" id="lista-tar"></div>
-                    <div id="resumenTitulares" style="margin-top:15px;"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('recuperacion')">
+                <span class="service-icon">💾</span>
+                <h3>Recuperación de Datos</h3>
+                <p>Recuperación de información en PC, Notebooks y Celulares. Rescatamos lo que creías perdido.</p>
             </div>
-            
-            <!-- DEUDAS - PRÉSTAMOS -->
-            <div id="tab-deudas-prestamos" class="tab-content">
-                <div class="info-banner">
-                    <div>🏦</div>
-                    <div><h3>Préstamos</h3><p>Controla préstamos bancarios, personales o de cualquier tipo.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="pre-nombre" placeholder="Tipo">
-                        <input type="text" id="pre-entidad" placeholder="Entidad">
-                        <select id="pre-moneda">
-                            <option value="ARS">ARS</option>
-                            <option value="USD">USD</option>
-                        </select>
-                        <input type="number" id="pre-monto" placeholder="Monto" step="0.01">
-                        <input type="number" id="pre-cuotas" placeholder="Cuotas" min="1">
-                        <button class="btn btn-primary" onclick="app.addPrestamo()">+ Agregar</button>
-                    </div>
-                    <div class="item-list" id="lista-pre"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('soporte')">
+                <span class="service-icon">🌐</span>
+                <h3>Soporte Técnico Remoto</h3>
+                <p>Asistencia técnica desde donde estés. Solucionamos problemas sin que salgas de tu hogar u oficina.</p>
             </div>
-            
-            <!-- METAS - AHORROS -->
-            <div id="tab-metas-ahorros" class="tab-content">
-                <div class="info-banner">
-                    <div>🐷</div>
-                    <div><h3>Metas de Ahorro</h3><p>Define objetivos de ahorro y registra tus avances mensualmente.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <input type="text" id="meta-nombre" placeholder="Meta">
-                        <input type="number" id="meta-monto" placeholder="Objetivo $" step="0.01">
-                        <button class="btn btn-primary" onclick="app.addMeta()">Establecer</button>
-                    </div>
-                    <div class="form-grid" style="margin-top:10px;">
-                        <input type="text" id="aho-nombre" placeholder="Ahorro realizado">
-                        <input type="number" id="aho-monto" placeholder="Monto $" step="0.01">
-                        <button class="btn btn-success" onclick="app.addAhorro()">Registrar</button>
-                    </div>
-                    <div class="item-list" id="lista-aho"></div>
-                    <div id="progresoAhorro" style="margin-top:15px;"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('software')">
+                <span class="service-icon">💻</span>
+                <h3>Instalación de Software</h3>
+                <p>Te ayudo a conseguir e instalar software profesional: Photoshop, Office, Premiere y más.</p>
             </div>
-            
-            <!-- METAS - PRESUPUESTOS -->
-            <div id="tab-metas-presupuestos" class="tab-content">
-                <div class="info-banner">
-                    <div>🎯</div>
-                    <div><h3>Presupuestos por Categoría</h3><p>Establece límites de gasto por categoría. Recibe alertas al acercarte o superar los límites.</p></div>
-                </div>
-                <div class="section">
-                    <div class="form-grid">
-                        <select id="pres-cat"></select>
-                        <input type="number" id="pres-monto" placeholder="Límite $" step="0.01">
-                        <button class="btn btn-primary" onclick="app.addPresupuesto()">Establecer</button>
-                    </div>
-                    <div id="listaPresupuestos" style="margin-top:15px;"></div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('asesoramiento')">
+                <span class="service-icon">💡</span>
+                <h3>Asesoramiento Tecnológico</h3>
+                <p>Te ayudamos a tomar las mejores decisiones tecnológicas. Consultoría personalizada según tus necesidades.</p>
             </div>
-            
-            <!-- ANÁLISIS -->
-            <div id="tab-analisis" class="tab-content">
-                <div class="info-banner">
-                    <div>📈</div>
-                    <div><h3>Análisis Financiero</h3><p>Visualiza gráficos, proyecciones futuras y comparaciones mensuales para tomar mejores decisiones.</p></div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">📊 Gastos por Categoría</div>
-                    <div style="background:var(--bg);padding:15px;border-radius:10px;">
-                        <div class="chart-bars" id="grafico1"></div>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">📈 Evolución Anual</div>
-                    <div style="background:var(--bg);padding:15px;border-radius:10px;">
-                        <div class="chart-bars" id="grafico2"></div>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">🔮 Proyección Financiera</div>
-                    <div class="form-grid">
-                        <select id="mesesProy">
-                            <option value="3">3 meses</option>
-                            <option value="6">6 meses</option>
-                            <option value="12">12 meses</option>
-                        </select>
-                        <button class="btn btn-primary" onclick="app.proyectar()">Calcular</button>
-                    </div>
-                    <div id="resultadoProy"></div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">📉 Comparación Anual</div>
-                    <div style="overflow-x:auto;">
-                        <table class="comparison-table">
-                            <thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>Balance</th></tr></thead>
-                            <tbody id="tablaComp"></tbody>
-                        </table>
-                    </div>
-                </div>
+
+            <div class="service-card fade-in" onclick="openServiceModal('desarrollo')">
+                <span class="service-icon">📱</span>
+                <h3>Desarrollo de Apps</h3>
+                <p>Desarrollo de aplicaciones móviles y web a medida. Transformamos tus ideas en soluciones digitales.</p>
             </div>
-            
-            <!-- HISTORIAL -->
-            <div id="tab-historial" class="tab-content">
-                <div class="info-banner">
-                    <div>📜</div>
-                    <div><h3>Historial de Actividad</h3><p>Registro automático de todas tus operaciones con fecha y hora.</p></div>
-                </div>
-                <div class="section">
-                    <div id="listaHistorial"></div>
-                </div>
+        </div>
+    </section>
+
+    <!-- Modales de Servicios -->
+    <div id="serviceModal" class="service-modal" onclick="closeServiceModal(event)">
+        <div class="modal-content-service" onclick="event.stopPropagation()">
+            <div class="modal-header-service">
+                <h3 id="modalServiceTitle"></h3>
+                <button class="modal-close" onclick="closeServiceModal()">&times;</button>
+            </div>
+            <div class="modal-body-service" id="modalServiceBody">
+                <!-- Contenido dinámico -->
             </div>
         </div>
     </div>
-    
-    
+
+    <!-- Finanzas Pro -->
+    <section id="finanzas" class="finanzas-pro fade-in">
+        <div class="finanzas-header">
+            <span class="finanzas-badge">PRECIO DE LANZAMIENTO</span>
+            <div class="finanzas-logo">
+                <img src="logos/Logo-FP-512x512.png">
+            </div>
+            <h2>Finanzas Pro</h2>
+            <p class="finanzas-tagline">La única app que revoluciona tu economía personal</p>
+            <p class="finanzas-subtitle">Desarrollada con la calidad Auratech™</p>
+        </div>
+
+        <div class="finanzas-features">
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">✅</span>
+                <div>
+                    <h4>Control Total</h4>
+                    <p>Gestiona ingresos, gastos fijos y variables en un solo lugar</p>
+                </div>
+            </div>
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">💳</span>
+                <div>
+                    <h4>Cuotas y Préstamos</h4>
+                    <p>Seguimiento automático de tus compras en cuotas y préstamos</p>
+                </div>
+            </div>
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">☁️</span>
+                <div>
+                    <h4>Backup en la Nube</h4>
+                    <p>Tus datos siempre seguros y respaldados</p>
+                </div>
+            </div>
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">📊</span>
+                <div>
+                    <h4>Análisis y Reportes</h4>
+                    <p>Gráficos y proyecciones para tomar mejores decisiones</p>
+                </div>
+            </div>
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">🔐</span>
+                <div>
+                    <h4>100% Seguro</h4>
+                    <p>Protección con PIN y encriptación de datos</p>
+                </div>
+            </div>
+            <div class="finanzas-feature">
+                <span class="finanzas-feature-icon">💬</span>
+                <div>
+                    <h4>Soporte Directo</h4>
+                    <p>Soporte personalizado por WhatsApp conmigo directamente</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="finanzas-pricing">
+            <div class="pricing-option">
+                <div class="pricing-header">
+                    <h3>Plan Mensual</h3>
+                </div>
+                <div class="pricing-price">
+                    <span class="price-amount">$9.999</span>
+                    <span class="price-period">/mes</span>
+                </div>
+                <p class="pricing-description">Facturación mensual • Cancelá cuando quieras</p>
+                <div style="height: 68px;"></div>
+                <a href="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=7f90612797094d97927649f66072d1ef" class="btn btn-primary pricing-btn" target="_blank">
+                    🪙 Suscripción Mensual
+                </a>
+            </div>
+
+            <div class="pricing-option pricing-featured">
+                <div class="pricing-badge">MÁS ELEGIDO</div>
+                <div class="pricing-header">
+                    <h3>Plan Anual</h3>
+                    <span class="pricing-savings">Ahorrás $24.000</span>
+                </div>
+                <div class="pricing-price">
+                    <span class="price-old">$120.000</span>
+                    <span class="price-amount">$95.999</span>
+                    <span class="price-period">/año</span>
+                </div>
+                <div class="pricing-highlight">
+                    🎁 Más de 2 meses gratuitos
+                </div>
+                <a href="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=567c6141f8c74c65afae4c93771f456d" class="btn btn-primary pricing-btn" target="_blank">
+                    🎁 Suscripción Anual - Ahorrá
+                </a>
+            </div>
+        </div>
+
+        <div class="finanzas-footer">
+            <p style="font-size: 16px; color: var(--text); margin-bottom: 10px;">🎁 <strong>Prueba gratuita de 30 días</strong></p>
+            <p style="font-size: 14px; color: var(--text-light);">Podés cancelar cuando quieras • Funcionalidades completas • Soporte directo y personalizado</p>
+        </div>
+    </section>
+
+    <!-- Sobre Mí -->
+    <section id="about">
+        <h2 class="section-title">Sobre Mí</h2>
+        <div class="about">
+            <div class="about-image fade-in">
+                <div class="about-photo">👨‍💻</div>
+            </div>
+            <div class="about-content fade-in">
+                <h2>¡Hola! Soy Alejandro</h2>
+                <p>Analista de Sistemas y Técnico en Armado y Reparación de PC (UTN) con más de 12 años de experiencia.</p>
+                <p>Mi propósito está en ayudar a personas y a empresas a entender y cuidar su tecnología de la mejor manera. Con un acompañamiento personalizado en cada paso y evitando tecnicismos innecesarios, mi compromiso es que sientas la tranquilidad de que tu equipo y tu inversión están en buenas manos.</p>
+                <div class="credentials">
+                    <span class="credential">🎓 Técnico Superior en Análisis de Sistemas</span>
+                    <span class="credential">🔧 Técnico en Armado y Reparación de PC (UTN)</span>
+                    <span class="credential">⏱️ +12 años de experiencia</span>
+                    <span class="credential">📍 Avellaneda, Buenos Aires</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonios -->
+    <section id="testimonios">
+        <h2 class="section-title">Lo Que Dicen Mis Clientes</h2>
+        <div class="testimonials-placeholder fade-in">
+            <span style="font-size: 60px; display: block; margin-bottom: 20px;">💬</span>
+            <p>Próximamente encontrarás aquí testimonios de clientes satisfechos.</p>
+        </div>
+    </section>
+
+    <!-- Contacto -->
+    <section id="contacto" class="contact fade-in">
+        <h2 class="section-title" style="color: var(--text);">Hablemos</h2>
+        <p style="font-size: 18px; color: var(--text-light); max-width: 600px; margin: 0 auto 40px;">¿Tenés un problema técnico? ¿Necesitás asesoramiento? Estoy para ayudarte.</p>
+        
+        <div class="contact-info">
+            <div class="contact-item">
+                <span class="contact-icon">📧</span>
+                <div>
+                    <h3>Email</h3>
+                    <a href="mailto:hola@aura-tech.ar">hola@aura-tech.ar</a>
+                </div>
+            </div>
+
+            <div class="contact-item">
+                <span class="contact-icon">📱</span>
+                <div>
+                    <h3>WhatsApp</h3>
+                    <p style="color: var(--text-light); margin: 0;">+54 9 11 4092-4916</p>
+                </div>
+            </div>
+
+            <div class="contact-item">
+                <span class="contact-icon">📍</span>
+                <div>
+                    <h3>Ubicación</h3>
+                    <p style="color: var(--text-light); margin: 0;">Avellaneda, Buenos Aires</p>
+                </div>
+            </div>
+        </div>
+
+        <a href="https://wa.me/5491140924916" class="btn btn-primary" target="_blank" style="margin-top: 30px;">
+            💬 Contactar por WhatsApp
+        </a>
+    </section>
+
+    <!-- Emprendimientos Recomendados -->
+    <section id="emprendimientos" class="emprendimientos fade-in">
+        <h3 style="color: var(--text); font-size: 1.3rem; margin-bottom: 10px; font-weight: 600;">🌟 Emprendimientos que recomiendo</h3>
+        <p class="emprendimientos-subtitle" style="margin-top: 5px;">Proyectos de personas que admiro</p>
+        
+        <div class="emprendimientos-grid">
+            <!-- Matungos -->
+            <a href="https://www.instagram.com/matungos.arg" target="_blank" class="emprendimiento-card">
+                <div class="emprendimiento-logo">
+                    <img src="logos/Logo-Matungos.png" class="logo-matungos">
+                </div>
+                <h3>Matungos®</h3>
+                <p class="emprendimiento-tagline">Mates pintados a mano con amor</p>
+                <span class="emprendimiento-cta">Instagram</span>
+            </a>
+            
+            <!-- Chocolevel -->
+            <a href="https://www.instagram.com/chocolevel.alfajores" target="_blank" class="emprendimiento-card">
+                <div class="emprendimiento-logo">
+                    <img src="logos/Logo-Choco.png" class="logo-chocolevel">
+                </div>
+                <h3>Chocolevel™</h3>
+                <p class="emprendimiento-tagline">Chocolate a otro nivel</p>
+                <span class="emprendimiento-cta">Instagram</span>
+            </a>
+            
+            <!-- Ritual -->
+            <a href="https://www.instagram.com/ritual.yerbaymate" target="_blank" class="emprendimiento-card">
+                <div class="emprendimiento-logo">
+                    <img src="logos/Logo-Ritual.png" class="logo-ritual">
+                </div>
+                <h3>Ritual™</h3>
+                <p class="emprendimiento-tagline">Mates de diseño y yerbas artesanales</p>
+                <span class="emprendimiento-cta">Instagram</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Botón flotante subir -->
+    <button class="scroll-to-top" id="scrollToTop">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+        </svg>
+    </button>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2025 Auratech™ - Soluciones Informáticas Profesionales. Todos los derechos reservados.</p>
+        <p style="margin-top: 10px; font-size: 12px;">Desarrollado con <span style="color: #ff0000; font-size: 16px; display: inline-block; animation: heartbeat 1.5s ease-in-out infinite;">❤️</span> por <span style="color: var(--primary); font-weight: 600;">Auratech™</span></p>
+        
+        <style>
+            @keyframes heartbeat {
+                0%, 100% { transform: scale(1); }
+                25% { transform: scale(1.1); }
+                50% { transform: scale(1); }
+            }
+        </style>
+    </footer>
+
+    <script>
+        // Contenido de los modales de servicios
+        const servicesContent = {
+            armado: {
+                title: '🔨 Armado de Equipos a Medida',
+                content: `
+                    <p>Armamos tu PC ideal adaptada 100% a tus necesidades y presupuesto.</p>
+                    
+                    <h4>¿Por qué armar tu PC a medida?</h4>
+                    <ul>
+                        <li>Pagás solo por lo que realmente necesitás</li>
+                        <li>Rendimiento optimizado para tu uso específico</li>
+                        <li>Posibilidad de upgrades futuros sin cambiar todo</li>
+                        <li>Componentes de marcas confiables con garantía oficial</li>
+                    </ul>
+                    
+                    <h4>¿Para qué uso armamos equipos?</h4>
+                    <ul>
+                        <li><strong>Gaming:</strong> Máximo rendimiento en tus juegos favoritos</li>
+                        <li><strong>Oficina/Estudio:</strong> Multitarea fluida y productividad</li>
+                        <li><strong>Diseño/Edición:</strong> Potencia para programas exigentes</li>
+                        <li><strong>Uso general:</strong> Balance perfecto precio-rendimiento</li>
+                    </ul>
+                    
+                    <h4>¿Cómo trabajamos?</h4>
+                    <ul>
+                        <li>Escuchamos tus necesidades y presupuesto</li>
+                        <li>Te armamos 2-3 opciones diferentes</li>
+                        <li>Elegís componentes y ajustamos el presupuesto</li>
+                        <li>Armamos, testeamos y entregamos funcionando</li>
+                        <li>Te explicamos todo y te damos garantía completa</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; color: var(--accent); font-weight: 600;">Todos los componentes tienen garantía oficial de 12 meses mínimo.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Quiero%20consultar%20sobre%20Armado%20de%20Equipos" class="btn btn-primary" target="_blank">
+                            Presupuesto Sin Cargo
+                        </a>
+                    </div>
+                `
+            },
+            venta: {
+                title: '🖥️ Venta de Equipos y Celulares',
+                content: `
+                    <p>Equipos y celulares con respaldo Auratech</p>
+                    
+                    <h4>PC y Notebooks:</h4>
+                    <ul>
+                        <li><strong>Nuevas:</strong> Con garantía oficial y sistema optimizado</li>
+                        <li><strong>Reacondicionadas:</strong> Testeadas, actualizadas y con garantía Auratech de 6 meses</li>
+                        <li><strong>Plan canje:</strong> Aceptamos tu equipo usado como parte de pago</li>
+                    </ul>
+                    
+                    <p><strong>Todas las PC se entregan con:</strong></p>
+                    <ul>
+                        <li>Sistema operativo optimizado</li>
+                        <li>Drivers y controladores actualizados</li>
+                        <li>Programas esenciales instalados</li>
+                        <li>Listas para usar</li>
+                    </ul>
+                    
+                    <h4>Celulares:</h4>
+                    <ul>
+                        <li>Siempre nuevos en caja cerrada</li>
+                        <li>Garantía oficial del fabricante</li>
+                        <li>Accesorios originales incluidos</li>
+                        <li>Testeados por Auratech antes de entregarte</li>
+                    </ul>
+                    
+                    <h4>¿Por qué comprar con Auratech?</h4>
+                    <ul>
+                        <li>Asesoramiento personalizado según tu uso</li>
+                        <li>Plan canje disponible</li>
+                        <li>Soporte técnico post-venta</li>
+                        <li>Precios competitivos</li>
+                        <li>Garantía real respaldada por Auratech</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; color: var(--text-light); font-size: 14px;">Stock actualizado todas las semanas.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Quiero%20consultar%20sobre%20Venta%20de%20Equipos" class="btn btn-primary" target="_blank">
+                            Consultar Disponibilidad
+                        </a>
+                    </div>
+                `
+            },
+            mantenimiento: {
+                title: '🔧 Mantenimiento Preventivo',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Recuperá el rendimiento original de tu PC</p>
+                    
+                    <p>Con las exigencias actuales, es fundamental mantener tu computadora funcionando de manera eficiente. La mejor forma de lograrlo es con un mantenimiento preventivo especializado.</p>
+                    
+                    <h4>¿Por qué es tan importante?</h4>
+                    <ul>
+                        <li><strong>Mejor rendimiento:</strong> Eliminamos archivos innecesarios, programas obsoletos y errores del sistema. Tu PC vuelve a responder como el primer día.</li>
+                        <li><strong>Mayor vida útil:</strong> Previene problemas críticos y fallas costosas. Un equipo bien mantenido dura años más.</li>
+                        <li><strong>Seguridad de datos:</strong> Eliminamos software peligroso y reforzamos la protección de tu información personal.</li>
+                        <li><strong>Mejoras y actualizaciones:</strong> Te asesoramos sobre mejoras (RAM, SSD, etc.) para potenciar aún más tu equipo.</li>
+                    </ul>
+                    
+                    <h4>¿Cada cuánto hacerlo?</h4>
+                    <ul>
+                        <li>Uso normal: <strong>cada 6 meses</strong></li>
+                        <li>Uso intensivo (gaming, diseño, edición): <strong>cada 3-4 meses</strong></li>
+                        <li>Ambientes con polvo o mascotas: <strong>cada 4-5 meses</strong></li>
+                        <li>Notebooks: <strong>cada 4-6 meses</strong> (más expuestas)</li>
+                    </ul>
+                    
+                    <h4>¿Qué incluye?</h4>
+                    <ul>
+                        <li>Limpieza interna profunda</li>
+                        <li>Cambio de pasta térmica</li>
+                        <li>Diagnóstico de hardware</li>
+                        <li>Optimización del sistema</li>
+                        <li>Actualización de drivers</li>
+                        <li>Chequeo de temperaturas</li>
+                        <li>Informe completo del estado</li>
+                    </ul>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Quiero%20agendar%20Mantenimiento%20Preventivo" class="btn btn-primary" target="_blank">
+                            Agendar Mantenimiento
+                        </a>
+                    </div>
+                `
+            },
+            reparacion: {
+                title: '🛠️ Reparación de Equipos',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Diagnóstico gratuito y presupuesto sin cargo</p>
+                    
+                    <h4>¿Qué reparamos?</h4>
+                    <ul>
+                        <li>PC de escritorio, All-in-One</li>
+                        <li>Notebooks y Netbooks</li>
+                        <li>Celulares (según disponibilidad de repuestos)</li>
+                    </ul>
+                    
+                    <h4>Problemas más comunes que solucionamos:</h4>
+                    <ul>
+                        <li>No enciende o se apaga solo</li>
+                        <li>Lentitud extrema</li>
+                        <li>Pantallas rotas o sin imagen</li>
+                        <li>Problemas de carga/batería</li>
+                        <li>Virus y malware</li>
+                        <li>Pérdida de datos</li>
+                        <li>Recalentamiento</li>
+                        <li>Ruidos extraños</li>
+                        <li>Pantalla azul constante</li>
+                        <li>Y mucho más</li>
+                    </ul>
+                    
+                    <h4>¿Cómo trabajamos?</h4>
+                    <ul>
+                        <li>Diagnóstico gratuito (24-48hs)</li>
+                        <li>Pruebas de estrés y evaluación técnica completa</li>
+                        <li>Asesoramiento honesto: te decimos si vale la pena reparar o no</li>
+                        <li>Presupuesto detallado sin cargo ni compromiso</li>
+                        <li>Si aprobás, reparamos (te mantenemos informado)</li>
+                        <li>Probamos todo antes de devolverte el equipo</li>
+                        <li>Garantía de 30 días en la reparación</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 10px; font-size: 14px;">
+                        <strong>Nuestro compromiso:</strong> No te vamos a ofrecer una reparación que no tenga sentido económico. Si conviene más cambiar el equipo, te lo vamos a decir.
+                    </p>
+                    
+                    <p style="margin-top: 15px; color: var(--text-light); font-size: 14px;">Reparaciones con repuestos originales o de primera calidad.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Necesito%20reparar%20mi%20equipo" class="btn btn-primary" target="_blank">
+                            Solicitar Diagnóstico
+                        </a>
+                    </div>
+                `
+            },
+            recuperacion: {
+                title: '💾 Recuperación de Datos',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Rescatamos lo que creías perdido</p>
+                    
+                    <h4>¿De dónde recuperamos datos?</h4>
+                    <ul>
+                        <li>Discos rígidos (HDD) internos y externos</li>
+                        <li>Discos sólidos (SSD)</li>
+                        <li>Pendrives y tarjetas SD/microSD</li>
+                        <li>Celulares (Android e iOS según caso)</li>
+                    </ul>
+                    
+                    <h4>Casos en los que podemos ayudarte:</h4>
+                    <ul>
+                        <li>Disco que no es reconocido</li>
+                        <li>Archivos eliminados accidentalmente</li>
+                        <li>Formateo accidental</li>
+                        <li>Particiones perdidas</li>
+                        <li>Virus que encriptó tus archivos</li>
+                        <li>Daño físico leve en el disco</li>
+                        <li>Sistema operativo corrupto</li>
+                    </ul>
+                    
+                    <h4>¿Cómo trabajamos?</h4>
+                    <ul>
+                        <li>Evaluación inicial sin cargo (nos contás qué pasó)</li>
+                        <li>Diagnóstico técnico para determinar viabilidad</li>
+                        <li>Presupuesto de recuperación (el costo del diagnóstico se deduce del precio final si decidís continuar)</li>
+                        <li>Si aprobás, trabajamos en la recuperación</li>
+                        <li>Entrega en pendrive/disco/nube</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; background: rgba(255, 170, 0, 0.1); padding: 15px; border-radius: 10px; font-size: 14px;">
+                        <strong>Importante:</strong> El éxito de recuperación depende de cada caso. Te evaluamos honestamente desde el principio, sin falsas expectativas.
+                    </p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Necesito%20recuperar%20datos" class="btn btn-primary" target="_blank">
+                            Consultar Tu Caso
+                        </a>
+                    </div>
+                `
+            },
+            soporte: {
+                title: '🌐 Soporte Técnico Remoto',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Te asistimos desde donde estés</p>
+                    
+                    <h4>¿En qué te podemos ayudar remotamente?</h4>
+                    <ul>
+                        <li>Instalación y configuración de programas</li>
+                        <li>Problemas con Windows o software</li>
+                        <li>Conexión a internet / WiFi</li>
+                        <li>Configuración de impresoras</li>
+                        <li>Compartir archivos en red</li>
+                        <li>Backups y copias de seguridad</li>
+                        <li>Optimización del sistema</li>
+                        <li>Asesoramiento sobre compras</li>
+                        <li>Limpieza de virus (casos leves)</li>
+                    </ul>
+                    
+                    <h4>¿Cómo funciona?</h4>
+                    <ul>
+                        <li>Nos contactás por WhatsApp explicando el problema</li>
+                        <li>Coordinamos día y horario</li>
+                        <li>Te mandamos link de acceso remoto (TeamViewer/AnyDesk)</li>
+                        <li>Solucionamos el problema mientras vos mirás</li>
+                        <li>Te explicamos qué hicimos y cómo prevenirlo</li>
+                    </ul>
+                    
+                    <h4>Ventajas del soporte remoto:</h4>
+                    <ul>
+                        <li>Sin moverte de tu casa u oficina</li>
+                        <li>Ahorrás tiempo de traslado</li>
+                        <li>Solución inmediata en la mayoría de casos</li>
+                        <li>Más económico que visita presencial</li>
+                        <li>Sesión grabada para tu tranquilidad (opcional)</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; color: var(--text-light); font-size: 14px;">Duración promedio: 30-60 minutos.<br>Si el problema no se puede resolver remotamente, te lo avisamos y coordinamos otra solución.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Necesito%20soporte%20remoto" class="btn btn-primary" target="_blank">
+                            Solicitar Soporte
+                        </a>
+                    </div>
+                `
+            },
+            asesoramiento: {
+                title: '💡 Asesoramiento Tecnológico',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Te ayudamos a tomar las mejores decisiones</p>
+                    
+                    <h4>¿Cuándo necesitás asesoramiento?</h4>
+                    <ul>
+                        <li>Vas a comprar una PC/Notebook y no sabés cuál elegir</li>
+                        <li>Necesitás upgradear tu equipo y no sabés por dónde empezar</li>
+                        <li>Querés armar una red en tu oficina/negocio</li>
+                        <li>Tenés que elegir software para tu empresa</li>
+                        <li>Necesitás implementar backups profesionales</li>
+                        <li>Querés mejorar la seguridad de tus equipos</li>
+                        <li>Estás arrancando un proyecto y necesitás definir tecnología</li>
+                    </ul>
+                    
+                    <h4>¿Qué incluye la consultoría?</h4>
+                    <ul>
+                        <li>Análisis de tus necesidades reales</li>
+                        <li>Recomendaciones personalizadas</li>
+                        <li>Presupuestos comparativos (si aplica)</li>
+                        <li>Evaluación costo-beneficio</li>
+                        <li>Explicación clara sin tecnicismos</li>
+                        <li>Seguimiento post-asesoramiento</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 10px; font-size: 14px;">
+                        <strong>Nuestro objetivo:</strong> Que tomes la mejor decisión según tu presupuesto y necesidades, evitando gastos innecesarios y futuras frustraciones.
+                    </p>
+                    
+                    <p style="margin-top: 15px; color: var(--text-light); font-size: 14px;">Asesoramiento inicial sin cargo por WhatsApp.<br>Consultorías extensas: presupuesto según caso.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Necesito%20asesoramiento%20tecnológico" class="btn btn-primary" target="_blank">
+                            Agendar Consulta
+                        </a>
+                    </div>
+                `
+            },
+            desarrollo: {
+                title: '📱 Desarrollo de Apps',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Transformamos tu idea en una app real</p>
+                    
+                    <h4>¿Qué desarrollamos?</h4>
+                    <ul>
+                        <li>Aplicaciones web (PWA)</li>
+                        <li>Aplicaciones móviles (Android)</li>
+                        <li>Sistemas de gestión personalizados</li>
+                        <li>Dashboards y herramientas internas</li>
+                        <li>Automatizaciones de procesos</li>
+                    </ul>
+                    
+                    <h4>Nuestro proceso:</h4>
+                    <ul>
+                        <li><strong>Reunión inicial:</strong> Entendemos tu idea y necesidad</li>
+                        <li><strong>Propuesta:</strong> Alcance, tiempos y presupuesto</li>
+                        <li><strong>Diseño:</strong> Mockups y flujo de la app</li>
+                        <li><strong>Desarrollo:</strong> Iteraciones con tu feedback</li>
+                        <li><strong>Testeo:</strong> Pruebas exhaustivas</li>
+                        <li><strong>Entrega:</strong> Capacitación y soporte incluido</li>
+                        <li><strong>Mantenimiento:</strong> Soporte post-lanzamiento</li>
+                    </ul>
+                    
+                    <h4>Tecnologías que usamos:</h4>
+                    <ul>
+                        <li><strong>Frontend:</strong> HTML, CSS, JavaScript, React</li>
+                        <li><strong>Backend:</strong> Node.js, Python</li>
+                        <li><strong>Base de datos:</strong> MySQL, Firebase</li>
+                        <li><strong>Hosting:</strong> Cloudflare, AWS, hosting argentino</li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px; background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 10px; font-size: 14px;">
+                        <strong>Ejemplo real:</strong> Finanzas Pro<br>
+                        Nuestra propia app de gestión financiera personal, desarrollada con las mejores prácticas y tecnologías actuales.
+                    </p>
+                    
+                    <p style="margin-top: 15px; color: var(--text-light); font-size: 14px;">Primera consulta sin cargo para evaluar viabilidad.</p>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Quiero%20desarrollar%20una%20app" class="btn btn-primary" target="_blank">
+                            Hablar Sobre Tu Proyecto
+                        </a>
+                    </div>
+                `
+            },
+            software: {
+                title: '💻 Instalación de Software',
+                content: `
+                    <p style="font-size: 17px; font-weight: 600; color: var(--primary);">Te ayudo a conseguir e instalar software profesional</p>
+                    
+                    <h4>¿Qué tipo de programas?</h4>
+                    <ul>
+                        <li><strong>Diseño:</strong> Photoshop, Illustrator, CorelDRAW</li>
+                        <li><strong>Edición:</strong> Premiere, After Effects, DaVinci</li>
+                        <li><strong>Productividad:</strong> Office, suites completas</li>
+                        <li>Y mucho más según tu necesidad</li>
+                    </ul>
+                    
+                    <h4>¿Cómo trabajamos?</h4>
+                    <ul>
+                        <li><strong>1.</strong> Me contás qué programa necesitás</li>
+                        <li><strong>2.</strong> Te asesoro sobre la mejor opción</li>
+                        <li><strong>3.</strong> Gestiono todo por vos</li>
+                        <li><strong>4.</strong> Instalo y configuro en tu equipo</li>
+                        <li><strong>5.</strong> Te explico cómo usarlo</li>
+                    </ul>
+                    
+                    <h4>También incluye:</h4>
+                    <ul>
+                        <li>✓ Configuración inicial personalizada</li>
+                        <li>✓ Actualizaciones</li>
+                        <li>✓ Soporte post-instalación</li>
+                        <li>✓ Asesoramiento sobre alternativas gratuitas</li>
+                    </ul>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://wa.me/5491140924916?text=Hola!%20Necesito%20instalar%20software" class="btn btn-primary" target="_blank">
+                            Consultar Software
+                        </a>
+                    </div>
+                `
+            }
+        };
+
+        // Abrir modal de servicio
+        function openServiceModal(serviceId) {
+            const modal = document.getElementById('serviceModal');
+            const title = document.getElementById('modalServiceTitle');
+            const body = document.getElementById('modalServiceBody');
+            
+            const service = servicesContent[serviceId];
+            title.innerHTML = service.title;
+            body.innerHTML = service.content;
+            
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // FIX: Resetear scroll al abrir modal
+            const modalContent = document.querySelector('.modal-content-service');
+            if (modalContent) {
+                modalContent.scrollTop = 0;
+            }
+        }
+
+        // Cerrar modal de servicio
+        function closeServiceModal(event) {
+            const modal = document.getElementById('serviceModal');
+            if (!event || event.target === modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Cerrar modal con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeServiceModal();
+            }
+        });
+
+        // Scroll to top button
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 500) {
+                scrollToTopBtn.classList.add('visible');
+            } else {
+                scrollToTopBtn.classList.remove('visible');
+            }
+        });
+
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Logo clickeable para volver arriba
+        document.getElementById('logoLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Mobile Navigation Toggle
+        const navToggle = document.getElementById('navToggle');
+        const navLinks = document.getElementById('navLinks');
+
+        navToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+
+        // Close menu when clicking on a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+            });
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Fade-in animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
