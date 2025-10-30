@@ -5,38 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <meta name="theme-color" content="#00796b">
     <title>Finanzas Pro | Auratech</title>
-    <link rel="manifest" href="./manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100vh; overflow-x: hidden; }
         :root {
-            --primary: #00796b; --primary-light: #48a999; --primary-dark: #004d40;
-            --secondary: #1565c0; --accent: #ffa000; --success: #2e7d32;
-            --danger: #c62828; --warning: #f57c00; --text: #212121;
-            --text-light: #757575; --bg: #ffffff; --bg-alt: #f5f5f5; --border: #e0e0e0;
-            /* Tamaño del logo: ajusta manualmente la escala si lo deseas */
-            --logo-base-size: 90px; /* tamaño base */
-            --logo-scale: 1.50; /* aumenta/disminuye para escalar el logo */
-            /* Distancia entre logo y título principal */
-            --logo-title-gap: 5px;
+            --primary: #1565c0; /* azul oscuro */
+            --primary-light: #5e92f3;
+            --primary-dark: #031a30; /* azul oscuro aún más intenso */
+            --secondary: #40c4ff; /* celeste */
+            --accent: #b2ebf2; /* celeste claro */
+            --success: #2e7d32;
+            --danger: #c62828;
+            --warning: #f57c00;
+            --text: #212121;
+            --text-light: #757575;
+            --bg: #fff;
+            --bg-alt: #f2f6fa; /* gris claro */
+            --border: #e0e0e0;
+            --logo-base-size: 84px;
+            --logo-scale: 1.24;
+            --logo-title-gap: 3px;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #031a30 0%, #031422 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; }
-        .container { max-width: 1400px; margin: 0 auto; background: var(--bg); min-height: 100vh; box-shadow: 0 0 60px rgba(0,0,0,0.5); }
-        .header { background: linear-gradient(135deg, #031a30 0%, #031422 100%); color: white; padding: clamp(25px, 4vw, 40px) 20px; text-align: center; position: relative; }
+        /* Base Body */
+        body { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #031a30 0%, #031422 100%); min-height: 100vh; color: var(--text); }
+        .container { width: 100%; max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); box-shadow: 0 0 38px 0 rgba(3,26,48,0.14); border-radius: 0 0 24px 24px; }
+        /* Cabecera/logo/texto */
+        .header { background: var(--primary-dark); color: white; padding: 32px 8px 20px 8px; text-align: center; }
         .logo-container { margin-bottom: var(--logo-title-gap); display: flex; justify-content: center; align-items: center; }
-        .logo { width: calc(var(--logo-base-size) * var(--logo-scale)); height: calc(var(--logo-base-size) * var(--logo-scale)); filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
-        .brand h1 { font-family: 'Poppins', sans-serif; font-size: clamp(1.8rem, 4.5vw, 3rem); margin-bottom: 8px; font-weight: 800; letter-spacing: -0.5px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .brand .tagline { font-size: clamp(0.85rem, 2vw, 0.95rem); opacity: 0.9; font-weight: 400; letter-spacing: 1px; }
-        .tabs { display: flex; background: var(--bg-alt); border-bottom: 2px solid var(--border); overflow-x: auto; position: sticky; top: 0; z-index: 100; }
-        .tab { padding: 16px 20px; cursor: pointer; border: none; background: transparent; font-size: 14px; font-weight: 600; color: var(--text-light); transition: all 0.3s; white-space: nowrap; border-bottom: 3px solid transparent; }
-        .tab:hover { background: rgba(0, 121, 107, 0.05); color: var(--primary); }
-        .tab.active { background: var(--bg); color: var(--primary); border-bottom-color: var(--primary); }
-        .subtabs { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 20px; gap: 8px; flex-wrap: wrap; position: sticky; top: 58px; z-index: 99; }
+        .logo { width: calc(var(--logo-base-size) * var(--logo-scale)); height: calc(var(--logo-base-size) * var(--logo-scale)); filter: drop-shadow(0 4px 16px rgba(3,26,48,0.10)); }
+        .brand h1 { font-family: 'Poppins', sans-serif; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
+        .brand .tagline { font-size: 1rem; opacity: 0.82; font-weight: 400; letter-spacing: 1px; }
+        /* --- NAV TABS --- */
+        .tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; background: var(--bg-alt); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        .tab { flex: 1 1 85px; min-width: 85px; text-align: center; padding: 14px 2px; border: none; background: transparent; font-size: 16px; font-weight: 700; color: var(--text-light); border-bottom: 3px solid transparent; transition: all 0.25s; letter-spacing: 0.2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+        .tab:hover, .tab:focus { background: #e3f2fd; color: var(--primary); outline: none; }
+        .tab.active { background: var(--bg); color: var(--primary); border-bottom: 3px solid var(--primary); }
+        /* Subtabs Clear Mobile Layout */
+        .subtabs { display: none; } /* <<--- sólo visible si está activa */
         .subtabs.active { display: flex; }
-        .subtab { padding: 10px 18px; cursor: pointer; border: 2px solid var(--border); background: var(--bg-alt); font-size: 13px; font-weight: 600; color: var(--text); transition: all 0.3s; border-radius: 8px; }
-        .subtab:hover { border-color: var(--primary); color: var(--primary); background: var(--bg); }
-        .subtab.active { background: var(--primary); color: white; border-color: var(--primary); }
-        .content { padding: clamp(15px, 3vw, 30px); }
+        .content { padding: 16px 4vw 26px 4vw; }
+        /* --- BOTONES --- */
+        .btn, button { width: 100%; max-width: 430px; min-height: 46px; margin: 8px auto 0 auto; display: block; padding: 14px; border: none; border-radius: 8px; font-size: 1.08rem; font-weight: 600; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.18s; font-family: inherit; box-shadow: 0 1px 6px 0 rgba(3,26,48,0.11); text-align: center; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover, .btn-primary:focus { background: var(--primary-dark); color: #fff; }        
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-info { background: var(--secondary); color: #fff; }
+        .btn-warning { background: #ffa000; color: #fff; }
+        /* --- LISTAS/ITEMS --- */
+        .item-list { background: var(--bg-alt); border-radius: 10px; padding: 10px; margin-top: 16px; }
+        .item { display: flex; flex-direction: column; align-items: stretch; justify-content: center; padding: 16px; border-bottom: 1px solid var(--border); gap: 8px; border-radius: 6px; transition: background 0.15s; }
+        .item:last-child { border-bottom: none; }
+        /* --- FORMS y SELECTORES --- */
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        input, select { width: 100%; padding: 13px 10px; border: 2px solid var(--border); border-radius: 8px; font-size: 16px; background: var(--bg); font-family: inherit; transition: border 0.2s, box-shadow 0.15s; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(21,101,192,0.08); }
+        /* Adaptador para selectores (mes, año, USD...) en fila */
+        .selector-bar, .filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center; }
+        .selector-bar select, .selector-bar input[type=number] { width: unset; min-width: 105px; max-width: 140px; }
+        /* --- CARDS y SECCIONES --- */
+        .cards { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; }
+        .card { background: var(--primary); color: #fff; padding: 18px; border-radius: 14px; box-shadow: 0 2px 10px rgba(21,101,192,0.08); font-size: 1.05rem; font-weight: 500; }
+        .section { background: var(--bg-alt); padding: 17px 11px 20px 11px; border-radius: 14px; margin-bottom: 17px; }
+        .section-title { font-size: 19px; font-weight: 700; color: var(--primary-dark); margin-bottom: 16px; }
+        /* --- Info banners, alerts, progress --- */
+        .info-banner { background: linear-gradient(90deg, #daeaf8 0, #e7f6ff 100%); border-left: 5px solid var(--primary); color: var(--primary-dark); border-radius: 12px; padding: 15px 12px; margin-bottom: 20px; font-size: 0.98rem; display: flex; gap: 11px; align-items: flex-start; }
+        .alert { padding: 14px 18px; border-radius: 10px; margin-bottom: 12px; font-size: 0.97rem; display: flex; align-items: center; gap: 10px; line-height: 1.5; }
+        /* --- Grid gastos --- */
+        .expense-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        /* --- Media Queries Desktop/Tablet --- */
+        @media (min-width: 531px) {            
+          .container { max-width: 540px; }
+        }
+        @media (min-width: 768px) {
+          .container { max-width: 742px; }
+          .content { padding: 28px 8vw 32px 8vw; }
+          .form-grid { grid-template-columns: repeat(2,1fr); }
+          .expense-grid { grid-template-columns: repeat(2,1fr); }
+          .cards { grid-template-columns: repeat(2,1fr); }
+          .selector-bar { justify-content: flex-start; }
+          .tabs { font-size: 17px; }
+        }
+        @media (min-width: 1100px) {
+            .container { max-width: 900px; }
+            .cards, .expense-grid { grid-template-columns: repeat(3,1fr); }
+        }
+        /* Mejoras añadidas: No scroll lateral, espaciado consistente, botones grandes/táctiles, mejoras de contraste/accesibilidad, secciones claramente separadas. */
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -134,6 +189,58 @@
             .btn { width: 100%; padding: 14px; }
             .chart-bars { height: 200px; }
         }
+        /* =================== MODIFICACIÓN: Ocultar botones globales fuera de Resumen =================== */
+        .boton-global {
+          display: block;
+        }
+        /* Al mostrar cualquier tab excepto Resumen, ocultar los botones globales */
+        .tab-content:not(#tab-resumen).active ~ .boton-global,
+        #tab-gestion-ingresos.active ~ .boton-global, 
+        #tab-gestion-fijos.active ~ .boton-global, 
+        #tab-gestion-variables.active ~ .boton-global,
+        #tab-gestion-tarjetas.active ~ .boton-global, 
+        #tab-gestion-prestamos.active ~ .boton-global,
+        #tab-metas-ahorros.active ~ .boton-global, 
+        #tab-metas-presupuestos.active ~ .boton-global {
+            display: none !important;
+        }
+        /* ============================================================================================= */
+        /* === Mejoras subtabs submenús como carrusel deslizable horizontal para mobile === */
+        .subtabs {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            gap: 6px;
+            padding-bottom: 6px;
+            scrollbar-width: none; /* Firefox */
+        }
+        .subtabs::-webkit-scrollbar { display: none; }
+        .subtab {
+            min-width: 145px;
+            flex: 0 0 auto;
+            margin-bottom: 0;
+        }
+        /* ====== Fin carrusel ====== */
+        /* === Tooltip explicativo de scroll carrusel de submenús (solo mobile) === */
+        @media (max-width: 600px) {
+          .subtabs-tooltip {
+            display: block;
+            text-align: center;
+            font-size: 13px;
+            color: var(--primary-dark);
+            opacity: 0.76;
+            margin-bottom: 7px;
+            margin-top: 0;
+            pointer-events: none;
+            user-select: none;
+            font-family: inherit;
+            background: var(--bg-alt);
+            border-radius: 7px 7px 0 0;
+            padding: 5px 0 3px 0;
+          }
+        }
+        @media (min-width: 601px) { .subtabs-tooltip { display: none; } }
+        /* === Fin tooltip carrusel === */
     </style>
 </head>
 <body>
@@ -189,21 +296,42 @@
             <div id="tab-resumen" class="tab-content active">
                 <div class="info-banner">
                     <div>💡</div>
-                    <div><h3>Panel de Control</h3><p><strong>Aquí ves tu panorama financiero:</strong> Las <strong>6 tarjetas</strong> muestran tus ingresos, gastos separados por tipo (Fijos, Variables, Tarjetas, Préstamos) y el balance del mes. La <strong>📊 Distribución de Gastos</strong> agrupa y compara visualmente tus 3 tipos de gastos (Fijos, Variables y Cuotas totales que suman Tarjetas + Préstamos) con barras proporcionales y porcentajes. El <strong>💵 campo USD</strong> te permite actualizar automáticamente el tipo de cambio desde internet o ingresarlo manualmente; todos los montos en dólares se convertirán usando este valor. Las <strong>🔔 Alertas Inteligentes</strong> te notifican automáticamente sobre situaciones importantes en tus finanzas.</p></div>
+                    <div>
+			<h3>Panel de Control</h3>
+				<p>
+				<strong>Aquí ves tu panorama financiero:</strong><br>
+				<strong>🗂️ Tarjetas de datos:</strong> Ingresos, gastos por tipo (Fijos, Variables, Tarjetas, Préstamos) y balance mensual.<br>
+				<strong>📊 Distribución de Gastos:</strong> Compara visualmente tus gastos (Fijos, Variables y Cuotas) con barras proporcionales y porcentajes.<br>
+				<strong>💵 Campo USD:</strong> Actualiza el tipo de cambio automáticamente o manual; convierte todos los montos a dólares.<br>
+				<strong>🔔 Alertas Inteligentes:</strong> Notificaciones sobre situaciones importantes en tus finanzas.
+				</p>
+			</div>
                 </div>
                 
-                <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;">
-                    <select id="mesActual" onchange="app.actualizar()" style="flex: 1; min-width: 130px;"></select>
-                    <input type="number" id="anioActual" min="2020" max="2030" onchange="app.actualizar()" style="flex: 1; min-width: 100px;">
-                    <div style="display: flex; gap: 8px; align-items: center; background: var(--bg-alt); padding: 8px 12px; border-radius: 8px; border: 2px solid var(--border);">
-                        <span style="font-size: 20px;">💵</span>
-                        <label style="font-size: 13px; font-weight: 600; color: var(--text);">USD:</label>
-                        <input type="number" id="tipoCambio" placeholder="1.350" step="0.01" onchange="app.guardarTipoCambio()" style="width: 90px; padding: 6px 8px; border: 1px solid var(--border);" title="Tipo de cambio USD a ARS. Todos los montos en dólares se convertirán usando este valor">
-                        <button class="btn" onclick="app.actualizarDolar()" style="padding: 6px 12px; background: var(--primary); color: white; font-size: 12px;" title="Obtiene automáticamente la cotización actual del dólar blue desde internet">🔄</button>
+				<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                    <!-- Fila 1: Mes y Año -->
+                    <div style="display: flex; gap: 8px;">
+                        <select id="mesActual" onchange="app.actualizar()" style="flex: 1;"></select>
+                        <select id="anioActual" onchange="app.actualizar()" style="flex: 1;"></select>
                     </div>
-                    <button class="btn" onclick="app.exportar()" style="background: #757575; color: white; padding: 10px 20px; min-width: 100px;">📥 Exportar</button>
-                    <button class="btn" onclick="document.getElementById('importFile').click()" style="background: #757575; color: white; padding: 10px 20px; min-width: 100px;">📤 Importar</button>
-                    <button class="btn" onclick="app.mostrarAyuda()" style="background: #757575; color: white; padding: 10px 16px; width: 45px; display: flex; justify-content: center; align-items: center; font-size: 18px;">❓</button>
+                    
+                    <!-- Fila 2: USD y botón ? -->
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 6px; align-items: center; background: var(--bg-alt); padding: 6px 10px; border-radius: 8px; border: 2px solid var(--border); flex: 1;">
+                            <span style="font-size: 16px;">💵</span>
+                            <label style="font-size: 13px; font-weight: 600; color: var(--text);">USD:</label>
+                            <input type="number" id="tipoCambio" placeholder="0" step="0.01" onchange="app.guardarTipoCambio()" style="flex: 1; padding: 4px 6px; border: 1px solid var(--border); height: 30px; font-size: 14px; box-sizing: border-box;" title="Tipo de cambio USD a ARS">
+                            <button class="btn" onclick="app.actualizarDolar()" style="padding: 0 !important; background: var(--primary) !important; color: white; font-size: 14px; height: 30px !important; width: 30px !important; display: flex !important; align-items: center !important; justify-content: center !important; border: none !important; min-height: unset !important; margin: 0 !important;" title="Actualizar cotización">🔄</button>
+                        </div>
+                        <button class="btn" onclick="app.mostrarAyuda()" style="background: #757575; color: white; padding: 6px 8px; width: 75px; display: flex; justify-content: center; align-items: center; font-size: 18px; min-height: unset !important; margin: 0 !important; height: 42px;">❓</button>
+                    </div>
+                    
+                    <!-- Fila 3: Exportar e Importar -->
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" onclick="app.exportar()" style="flex: 1; background: #757575; color: white; padding: 10px; min-height: unset !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px;">📥 Exportar</button>
+						<button class="btn" onclick="document.getElementById('importFile').click()" style="flex: 1; background: #757575; color: white; padding: 10px; min-height: unset !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px;">📤 Importar</button>
+                    </div>
+                    
                     <input type="file" id="importFile" style="display:none" accept=".json" onchange="app.importar(event)">
                 </div>
                 
@@ -224,7 +352,9 @@
             <div id="tab-gestion-ingresos" class="tab-content">
                 <div class="info-banner">
                     <div>💵</div>
-                    <div><h3>Ingresos</h3><p>💡 <strong>Cómo usar:</strong> Completa todos los campos y haz clic en "+ Agregar". Puedes registrar ingresos en ARS o USD. El color te ayuda a identificar visualmente cada tipo de ingreso.</p></div>
+                    <div><h3>Ingresos</h3><p>💡 <strong>Cómo usar:</strong> Completa todos los campos y haz clic en "+ Agregar".<br> 
+					</strong>Puedes registrar ingresos en ARS o USD.<br>
+					</strong>El color te ayuda a identificar visualmente cada tipo de ingreso.</p></div>
                 </div>
                 <div class="section">
                     <div class="form-grid">
@@ -234,7 +364,7 @@
                             <option value="ARS">ARS</option>
                             <option value="USD">USD</option>
                         </select>
-                        <input type="number" id="ing-monto" placeholder="Monto" step="0.01">
+                        <input type="text" id="ing-monto" placeholder="Monto" step="0.01">
                         <div style="grid-column: 1 / -1;">
                             <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text);">Color:</label>
                             <div class="color-picker">
@@ -270,7 +400,9 @@
             <div id="tab-gestion-fijos" class="tab-content">
                 <div class="info-banner">
                     <div>🏠</div>
-                    <div><h3>Gastos Fijos</h3><p>💡 <strong>Cómo usar:</strong> Registra gastos que se repiten cada mes (alquiler, servicios, suscripciones). Puedes usar USD si pagas en dólares. Una vez guardados, se mostrarán en el resumen mensual.</p></div>
+                    <div><h3>Gastos Fijos</h3><p>💡 <strong>Cómo usar:</strong> Registra gastos que se repiten cada mes (alquiler, servicios, suscripciones).<br>
+					</strong>Puedes usar USD si pagas en dólares.<br>
+					</strong>Una vez guardados, se mostrarán en el resumen mensual.</p></div>
                 </div>
                 <div class="section">
                     <div class="form-grid">
@@ -280,7 +412,7 @@
                             <option value="ARS">ARS</option>
                             <option value="USD">USD</option>
                         </select>
-                        <input type="number" id="fij-monto" placeholder="Monto" step="0.01">
+                        <input type="text" id="fij-monto" placeholder="Monto" step="0.01">
                         <div style="grid-column: 1 / -1;">
                             <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text);">Color:</label>
                             <div class="color-picker">
@@ -316,7 +448,9 @@
             <div id="tab-gestion-variables" class="tab-content">
                 <div class="info-banner">
                     <div>🛒</div>
-                    <div><h3>Gastos Variables</h3><p>💡 <strong>Cómo usar:</strong> Registra gastos que cambian mes a mes (comida, transporte, entretenimiento). Elige la categoría correcta para que la app pueda comparar con tus presupuestos. Los montos en USD se convierten automáticamente.</p></div>
+                    <div><h3>Gastos Variables</h3><p>💡 <strong>Cómo usar:</strong> Registra gastos que cambian mes a mes (comida, transporte, entretenimiento).<br>
+					</strong>Elige la categoría correcta para que la app pueda comparar con tus presupuestos.<br>
+					</strong>Los montos en USD se convierten automáticamente.</p></div>
                 </div>
                 <div class="section">
                     <div class="form-grid">
@@ -326,7 +460,7 @@
                             <option value="ARS">ARS</option>
                             <option value="USD">USD</option>
                         </select>
-                        <input type="number" id="var-monto" placeholder="Monto" step="0.01">
+                        <input type="text" id="var-monto" placeholder="Monto" step="0.01">
                         <div style="grid-column: 1 / -1;">
                             <label style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text);">Color:</label>
                             <div class="color-picker">
@@ -363,7 +497,9 @@
             <div id="tab-gestion-tarjetas" class="tab-content">
                 <div class="info-banner">
                     <div>💳</div>
-                    <div><h3>Gestión de Tarjetas</h3><p>💡 <strong>Cómo usar:</strong> <br>• <strong>Compra Nueva:</strong> Si acabas de hacer la compra, ingresa el monto total, cuotas y fecha. El sistema calculará todo automáticamente.<br>• <strong>Compra Antigua:</strong> Si ya pagaste algunas cuotas, ingresa el valor de cada cuota y en qué cuota estás. Haz clic en "✓ Pagar" cada vez que abonas una cuota.</p></div>
+                    <div><h3>Gestión de Tarjetas</h3><p>💡 <strong>Cómo usar:</strong> <br>• <strong>Compra Nueva:</strong> Si acabas de hacer la compra, ingresa el monto total, cuotas y fecha.<br>
+					</strong>El sistema calculará todo automáticamente.<br>• <strong>Compra Antigua:</strong> Si ya pagaste algunas cuotas, ingresa el valor de cada cuota y en qué cuota estás.<br>
+					</strong>Haz clic en "✓ Pagar" cada vez que abonas una cuota.</p></div>
                 </div>
 
                 <div class="section">
@@ -381,7 +517,7 @@
                         <div class="form-grid">
                             <input type="text" id="tarjeta-nombre" placeholder="Nombre de la compra">
                             <input type="text" id="tarjeta-tarjeta" placeholder="Nombre de tarjeta">
-                            <input type="number" id="tarjeta-monto" placeholder="Monto total" step="0.01">
+                            <input type="text" id="tarjeta-monto" placeholder="Monto total" step="0.01">
                             <input type="number" id="tarjeta-cuotas" placeholder="Total cuotas" min="1">
                             <input type="date" id="tarjeta-fecha">
                             <button class="btn btn-primary" onclick="app.agregarTarjetaCompleto()">+ Agregar</button>
@@ -393,7 +529,7 @@
                         <div class="form-grid">
                             <input type="text" id="tarjeta-nombre-rapido" placeholder="Nombre de la compra">
                             <input type="text" id="tarjeta-tarjeta-rapido" placeholder="Nombre de tarjeta">
-                            <input type="number" id="tarjeta-cuota-rapido" placeholder="Valor cuota" step="0.01">
+                            <input type="text" id="tarjeta-cuota-rapido" placeholder="Valor cuota" step="0.01">
                             <input type="number" id="tarjeta-cuotas-rapido" placeholder="Total cuotas" min="1">
                             <input type="number" id="tarjeta-actual-rapido" placeholder="Cuota actual" min="1">
                             <button class="btn btn-primary" onclick="app.agregarTarjetaRapido()">+ Agregar</button>
@@ -408,7 +544,8 @@
             <div id="tab-gestion-prestamos" class="tab-content">
                 <div class="info-banner">
                     <div>🏦</div>
-                    <div><h3>Gestión de Préstamos</h3><p>💡 <strong>Cómo usar:</strong> <br>• <strong>Préstamo Nuevo:</strong> Para préstamos recientes, ingresa el monto total y cantidad de cuotas.<br>• <strong>Préstamo Antiguo:</strong> Si ya comenzaste a pagarlo, ingresa el valor de la cuota y en cuál estás. El sistema calculará automáticamente cuánto debes y las cuotas mensuales.</p></div>
+                    <div><h3>Gestión de Préstamos</h3><p>💡 <strong>Cómo usar:</strong> <br>• <strong>Préstamo Nuevo:</strong> Para préstamos recientes, ingresa el monto total y cantidad de cuotas.<br>• <strong>Préstamo Antiguo:</strong> Si ya comenzaste a pagarlo, ingresa el valor de la cuota y en cuál estás.<br>
+					</strong>El sistema calculará automáticamente cuánto debes y las cuotas mensuales.</p></div>
                 </div>
 
                 <div class="section">
@@ -426,7 +563,7 @@
                         <div class="form-grid">
                             <input type="text" id="prestamo-nombre" placeholder="Nombre del préstamo">
                             <input type="text" id="prestamo-entidad" placeholder="Entidad">
-                            <input type="number" id="prestamo-monto" placeholder="Monto total" step="0.01">
+                            <input type="text" id="prestamo-monto" placeholder="Monto total" step="0.01">
                             <input type="number" id="prestamo-cuotas" placeholder="Total cuotas" min="1">
                             <input type="date" id="prestamo-fecha">
                             <button class="btn btn-primary" onclick="app.agregarPrestamoCompleto()">+ Agregar</button>
@@ -438,7 +575,7 @@
                         <div class="form-grid">
                             <input type="text" id="prestamo-nombre-rapido" placeholder="Nombre del préstamo">
                             <input type="text" id="prestamo-entidad-rapido" placeholder="Entidad">
-                            <input type="number" id="prestamo-cuota-rapido" placeholder="Valor cuota" step="0.01">
+                            <input type="text" id="prestamo-cuota-rapido" placeholder="Valor cuota" step="0.01">
                             <input type="number" id="prestamo-cuotas-rapido" placeholder="Total cuotas" min="1">
                             <input type="number" id="prestamo-actual-rapido" placeholder="Cuota actual" min="1">
                             <button class="btn btn-primary" onclick="app.agregarPrestamoRapido()">+ Agregar</button>
@@ -453,17 +590,20 @@
             <div id="tab-metas-ahorros" class="tab-content">
                 <div class="info-banner">
                     <div>🐷</div>
-                    <div><h3>Metas de Ahorro</h3><p>💡 <strong>Cómo usar:</strong> Primero establece una <strong>Meta</strong> (ej: "Vacaciones - $500.000"). Luego registra cada <strong>Ahorro</strong> que hagas. La barra de progreso te mostrará cuánto te falta para alcanzar tu objetivo. ¡Puedes tener múltiples metas!</p></div>
+                    <div><h3>Metas de Ahorro</h3><p>💡 <strong>Cómo usar:</strong> Primero establece una <strong>Meta</strong> (ej: "Vacaciones - $500.000").<br>
+					</strong>Luego registra cada <strong>Ahorro</strong> que hagas.<br>
+					</strong>La barra de progreso te mostrará cuánto te falta para alcanzar tu objetivo.<br>
+					</strong>¡Puedes tener múltiples metas!</p></div>
                 </div>
                 <div class="section">
                     <div class="form-grid">
                         <input type="text" id="meta-nombre" placeholder="Meta">
-                        <input type="number" id="meta-monto" placeholder="Objetivo $" step="0.01">
+                        <input type="text" id="meta-monto" placeholder="Objetivo $" step="0.01">
                         <button class="btn btn-primary" onclick="app.addMeta()">Establecer</button>
                     </div>
                     <div class="form-grid" style="margin-top:10px;">
                         <input type="text" id="aho-nombre" placeholder="Ahorro realizado">
-                        <input type="number" id="aho-monto" placeholder="Monto $" step="0.01">
+                        <input type="text" id="aho-monto" placeholder="Monto $" step="0.01">
                         <button class="btn btn-success" onclick="app.addAhorro()">Registrar</button>
                     </div>
                     <div class="item-list" id="lista-aho"></div>
@@ -475,12 +615,14 @@
             <div id="tab-metas-presupuestos" class="tab-content">
                 <div class="info-banner">
                     <div>🎯</div>
-                    <div><h3>Presupuestos por Categoría</h3><p>💡 <strong>Cómo usar:</strong> Define límites de gasto para cada categoría (ej: "Alimentación - $200.000"). La app comparará automáticamente tus <strong>Gastos Variables</strong> registrados con estos límites y te alertará si te estás pasando. ¡Te ayuda a controlar mejor tus finanzas!</p></div>
+                    <div><h3>Presupuestos por Categoría</h3><p>💡 <strong>Cómo usar:</strong> Define límites de gasto para cada categoría (ej: "Alimentación - $200.000").<br>
+					</strong>La app comparará automáticamente tus <strong>Gastos Variables</strong> registrados con estos límites y te alertará si te estás pasando.<br>
+					</strong>¡Te ayuda a controlar mejor tus finanzas!</p></div>
                 </div>
                 <div class="section">
                     <div class="form-grid">
                         <select id="pres-cat"></select>
-                        <input type="number" id="pres-monto" placeholder="Límite $" step="0.01">
+                        <input type="text" id="pres-monto" placeholder="Límite $" step="0.01">
                         <button class="btn btn-primary" onclick="app.addPresupuesto()">Establecer</button>
                     </div>
                     <div id="listaPresupuestos" style="margin-top:15px;"></div>
@@ -663,10 +805,100 @@
             editando: { activo: false, tipo: null, indice: null },
             
             formatearPesos(num) {
-                return new Intl.NumberFormat('es-AR', {
+                const s = new Intl.NumberFormat('es-AR', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 }).format(num);
+                return `$ ${s}`;
+            },
+            
+            // Convierte un string como "$ 1.234,56" a número 1234.56
+            parseMonto(str) {
+                if (str == null) return NaN;
+                const limpio = String(str)
+                    .replace(/[^0-9,.-]/g, '') // quita símbolo, espacios, etc.
+                    .replace(/\./g, '')        // quita puntos de miles
+                    .replace(/,/g, '.');        // cambia coma decimal por punto
+                const n = parseFloat(limpio);
+                return isNaN(n) ? NaN : n;
+            },
+            
+            // Formatea con "$ " + puntos de miles y coma decimal
+            formatearPesosConSimbolo(num) {
+                if (num == null || isNaN(num)) return '';
+                return this.formatearPesos(num);
+            },
+            
+            // Agrega formateo a los inputs de monto (focus/blur)
+            attachCurrencyFormatters() {
+                const ids = [
+                    'ing-monto','fij-monto','var-monto',
+                    'tarjeta-monto','tarjeta-cuota-rapido',
+                    'prestamo-monto','prestamo-cuota-rapido',
+                    'meta-monto','aho-monto','pres-monto'
+                ];
+                const formatLive = (raw) => {
+                    if (raw == null) return '';
+                    // Quitar símbolo y espacios
+                    let s = String(raw).replace(/\s|\$/g, '');
+                    // Permitir dígitos y coma; quitar puntos (siempre miles) y otros
+                    s = s.replace(/\./g, '');
+                    s = s.replace(/[^0-9,\-]/g, '');
+                    // Separar por coma (único separador decimal válido en vivo)
+                    const lastComma = s.lastIndexOf(',');
+                    let entero = lastComma >= 0 ? s.slice(0, lastComma) : s;
+                    let dec = lastComma >= 0 ? s.slice(lastComma + 1) : '';
+                    // Limpiar signos/ruido
+                    const neg = entero.startsWith('-');
+                    if (neg) entero = entero.slice(1);
+                    entero = entero.replace(/[^0-9]/g, '');
+                    dec = dec.replace(/[^0-9]/g, '').slice(0, 2);
+                    // Limitar a 9 dígitos enteros (hasta 900.000.000)
+                    if (entero.length > 9) entero = entero.slice(0, 9);
+                    // Eliminar ceros a la izquierda excepto si todo es 0
+                    entero = entero.replace(/^0+(\d)/, '$1');
+                    // Agrupar miles con punto
+                    const withThousands = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                    const base = (neg ? '-' : '') + withThousands;
+                    if (!base && !dec) return '';
+                    return dec.length ? `$ ${base},${dec}` : `$ ${base}`;
+                };
+                const setFormattedWithCaret = (input) => {
+                    const prev = input.value;
+                    const selStart = input.selectionStart || 0;
+                    // Contar dígitos antes del caret
+                    const digitsBefore = (prev.slice(0, selStart).match(/\d/g) || []).length;
+                    const formatted = formatLive(prev);
+                    input.value = formatted;
+                    // Posicionar caret al mismo conteo de dígitos
+                    let count = 0;
+                    let newPos = formatted.length;
+                    for (let i = 0; i < formatted.length; i++) {
+                        if (/\d/.test(formatted[i])) count++;
+                        if (count >= digitsBefore) { newPos = i + 1; break; }
+                    }
+                    try { input.setSelectionRange(newPos, newPos); } catch {}
+                };
+                ids.forEach(id => {
+                    const input = document.getElementById(id);
+                    if (!input) return;
+                    // Al enfocar: mostrar valor crudo editable (con punto decimal)
+                    input.addEventListener('focus', () => {
+                        const val = this.parseMonto(input.value);
+                        input.value = isNaN(val) ? '' : String(val);
+                    });
+                    // Mientras escribe: formateo en vivo con preservación de cursor (ligero)
+                    input.addEventListener('input', (e) => {
+                        // Permitir borrar completo
+                        if (!input.value) return;
+                        setFormattedWithCaret(input);
+                    });
+                    // Al salir: formatear con símbolo y separadores
+                    input.addEventListener('blur', () => {
+                        const val = this.parseMonto(input.value);
+                        input.value = isNaN(val) ? '' : this.formatearPesosConSimbolo(val);
+                    });
+                });
             },
             
             convertirARS(monto, moneda) {
@@ -750,6 +982,12 @@
                 this.cargarDatos();
                 document.getElementById('tipoCambio').value = this.datos.tipoCambio;
                 this.actualizar();
+                this.attachCurrencyFormatters();
+                // Fuerza el tab inicial, eliminando tooltips fuera de contexto
+                const tabsC = document.getElementById('tabsContainer');
+                if(tabsC && tabsC.children.length > 0){
+                  tabsC.children[0].click(); // activa resumen limpio
+                }
                 if (!localStorage.getItem('aura_visited')) {
                     setTimeout(() => this.mostrarAyuda(), 500);
                     localStorage.setItem('aura_visited', '1');
@@ -760,14 +998,23 @@
                 const tabsC = document.getElementById('tabsContainer');
                 const subsC = document.getElementById('subtabsContainer');
                 
-                this.tabs.forEach((tab, i) => {
+			this.tabs.forEach((tab, i) => {
                     const btn = document.createElement('button');
                     btn.className = `tab ${i===0?'active':''}`;
-                    btn.textContent = tab.name;
+                    
+                    // Separar emoji del texto
+                    const parts = tab.name.split(' ');
+                    const emoji = parts[0]; // El emoji
+                    const texto = parts.slice(1).join(' '); // El resto del texto
+                    
+                    // Crear estructura: emoji arriba, texto abajo
+                    btn.innerHTML = `<span style="font-size: 20px;">${emoji}</span><span style="font-size: 12px;">${texto}</span>`;
+                    
                     btn.onclick = () => this.cambiarTab(tab.id, tab.subs);
                     tabsC.appendChild(btn);
                     
                     if (tab.subs) {
+                        // Genera el subtabs carrusel
                         const subDiv = document.createElement('div');
                         subDiv.className = 'subtabs';
                         subDiv.id = `subtabs-${tab.id}`;
@@ -778,6 +1025,24 @@
                             subBtn.onclick = () => this.cambiarSubTab(tab.id, sub.id, subBtn);
                             subDiv.appendChild(subBtn);
                         });
+                        // Listener scroll como antes
+                        subDiv.addEventListener('scroll', function() {
+                            let ticking = false;
+                            if (!ticking) {
+                                window.requestAnimationFrame(() => {
+                                    const subtabsRect = subDiv.getBoundingClientRect();
+                                    let closest, minDist = Infinity;
+                                    subDiv.querySelectorAll('.subtab').forEach(subtab => {
+                                        const rect = subtab.getBoundingClientRect();
+                                        const dist = Math.abs(rect.left + rect.width/2 - (subtabsRect.left + subtabsRect.width/2));
+                                        if (dist < minDist) { closest = subtab; minDist = dist; }
+                                    });
+                                    if (closest && !closest.classList.contains('active')) closest.click();
+                                    ticking = false;
+                                });
+                                ticking = true;
+                            }
+                        });
                         subsC.appendChild(subDiv);
                     }
                 });
@@ -787,10 +1052,8 @@
                 document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.subtabs').forEach(s => s.classList.remove('active'));
-                
                 event.target.classList.add('active');
                 this.activeTab = id;
-                
                 if (subs) {
                     document.getElementById(`subtabs-${id}`).classList.add('active');
                     const firstSub = subs[0].id;
@@ -799,8 +1062,19 @@
                 } else {
                     this.activeSub = null;
                     document.getElementById(`tab-${id}`).classList.add('active');
-                    
                     if (id === 'historial') this.mostrarHist();
+                }
+                // Lógica tooltip unificada:
+                const subsC = document.getElementById('subtabsContainer');
+                subsC.querySelectorAll('.subtabs-tooltip').forEach(t => t.remove());
+                if ((id === 'gestion' || id === 'metas') && subs) {
+                    const subtabsDiv = document.getElementById(`subtabs-${id}`);
+                    if (subtabsDiv) {
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'subtabs-tooltip';
+                        tooltip.innerHTML = '💡 Deslizar horizontalmente para ver más opciones';
+                        subsC.insertBefore(tooltip, subtabsDiv);
+                    }
                 }
             },
             
@@ -813,7 +1087,7 @@
                 document.getElementById(`tab-${parent}-${sub}`).classList.add('active');
             },
             
-            llenarSelects() {
+llenarSelects() {
                 const mSel = document.getElementById('mesActual');
                 this.meses.forEach((m,i) => {
                     const opt = document.createElement('option');
@@ -821,6 +1095,16 @@
                     opt.textContent = m;
                     mSel.appendChild(opt);
                 });
+                
+                // Llenar selector de años (2020-2050)
+                const aSel = document.getElementById('anioActual');
+                for(let year = 2020; year <= 2050; year++) {
+                    const opt = document.createElement('option');
+                    opt.value = year;
+                    opt.textContent = year;
+                    aSel.appendChild(opt);
+                }
+                
                 ['ing','fij','var'].forEach(t => {
                     const sel = document.getElementById(`${t}-cat`);
                     this.cat[t].forEach(c => {
@@ -850,7 +1134,7 @@
             
             add(tipo) {
                 const nom = document.getElementById(`${tipo}-nombre`).value;
-                const monto = parseFloat(document.getElementById(`${tipo}-monto`).value);
+                const monto = this.parseMonto(document.getElementById(`${tipo}-monto`).value);
                 const cat = document.getElementById(`${tipo}-cat`).value;
                 const col = document.getElementById(`${tipo}-color`).value;
                 const moneda = document.getElementById(`${tipo}-moneda`).value;
@@ -967,7 +1251,7 @@
             agregarTarjetaCompleto() {
                 const nombre = document.getElementById('tarjeta-nombre').value;
                 const tarjeta = document.getElementById('tarjeta-tarjeta').value;
-                const monto = parseFloat(document.getElementById('tarjeta-monto').value);
+                const monto = this.parseMonto(document.getElementById('tarjeta-monto').value);
                 const cuotas = parseInt(document.getElementById('tarjeta-cuotas').value);
                 const fecha = document.getElementById('tarjeta-fecha').value;
                 
@@ -999,7 +1283,7 @@
             agregarTarjetaRapido() {
                 const nombre = document.getElementById('tarjeta-nombre-rapido').value;
                 const tarjeta = document.getElementById('tarjeta-tarjeta-rapido').value;
-                const cuota = parseFloat(document.getElementById('tarjeta-cuota-rapido').value);
+                const cuota = this.parseMonto(document.getElementById('tarjeta-cuota-rapido').value);
                 const cuotas = parseInt(document.getElementById('tarjeta-cuotas-rapido').value);
                 const actual = parseInt(document.getElementById('tarjeta-actual-rapido').value);
                 
@@ -1105,7 +1389,7 @@
             agregarPrestamoCompleto() {
                 const nombre = document.getElementById('prestamo-nombre').value;
                 const entidad = document.getElementById('prestamo-entidad').value;
-                const monto = parseFloat(document.getElementById('prestamo-monto').value);
+                const monto = this.parseMonto(document.getElementById('prestamo-monto').value);
                 const cuotas = parseInt(document.getElementById('prestamo-cuotas').value);
                 const fecha = document.getElementById('prestamo-fecha').value;
                 
@@ -1137,7 +1421,7 @@
             agregarPrestamoRapido() {
                 const nombre = document.getElementById('prestamo-nombre-rapido').value;
                 const entidad = document.getElementById('prestamo-entidad-rapido').value;
-                const cuota = parseFloat(document.getElementById('prestamo-cuota-rapido').value);
+                const cuota = this.parseMonto(document.getElementById('prestamo-cuota-rapido').value);
                 const cuotas = parseInt(document.getElementById('prestamo-cuotas-rapido').value);
                 const actual = parseInt(document.getElementById('prestamo-actual-rapido').value);
                 
@@ -1227,7 +1511,7 @@
             
             addMeta() {
                 const nom = document.getElementById('meta-nombre').value;
-                const monto = parseFloat(document.getElementById('meta-monto').value);
+                const monto = this.parseMonto(document.getElementById('meta-monto').value);
                 if (!nom || !monto) return alert('⚠️ Completa los campos');
                 const mk = this.getMes();
                 if (!this.datos.metas[mk]) this.datos.metas[mk] = [];
@@ -1237,10 +1521,54 @@
                 this.guardar();
                 this.actualizar();
             },
+			
+			editarMeta(index) {
+                const mk = this.getMes();
+                const meta = this.datos.metas[mk][index];
+                document.getElementById('meta-nombre').value = meta.nom;
+                document.getElementById('meta-monto').value = meta.monto;
+                // Eliminar sin confirmación ya que estamos editando
+                this.datos.metas[mk].splice(index, 1);
+                this.guardar();
+                this.actualizar();
+                // Scroll hacia el formulario
+                document.getElementById('meta-nombre').focus();
+            },
+            
+            eliminarMeta(index) {
+                if (confirm('¿Eliminar esta meta?')) {
+                    const mk = this.getMes();
+                    this.datos.metas[mk].splice(index, 1);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+            
+            editarAhorro(index) {
+                const mk = this.getMes();
+                const ahorro = this.datos.aho[mk][index];
+                document.getElementById('aho-nombre').value = ahorro.nom;
+                document.getElementById('aho-monto').value = ahorro.monto;
+                // Eliminar sin confirmación ya que estamos editando
+                this.datos.aho[mk].splice(index, 1);
+                this.guardar();
+                this.actualizar();
+                // Scroll hacia el formulario
+                document.getElementById('aho-nombre').focus();
+            },
+            
+            eliminarAhorro(index) {
+                if (confirm('¿Eliminar este ahorro?')) {
+                    const mk = this.getMes();
+                    this.datos.aho[mk].splice(index, 1);
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
             
             addAhorro() {
                 const nom = document.getElementById('aho-nombre').value;
-                const monto = parseFloat(document.getElementById('aho-monto').value);
+                const monto = this.parseMonto(document.getElementById('aho-monto').value);
                 if (!nom || !monto) return alert('⚠️ Completa los campos');
                 const mk = this.getMes();
                 if (!this.datos.aho[mk]) this.datos.aho[mk] = [];
@@ -1253,7 +1581,7 @@
             
             addPresupuesto() {
                 const cat = document.getElementById('pres-cat').value;
-                const monto = parseFloat(document.getElementById('pres-monto').value);
+                const monto = this.parseMonto(document.getElementById('pres-monto').value);
                 if (!cat || !monto) return alert('⚠️ Completa los campos');
                 const mk = this.getMes();
                 if (!this.datos.pres[mk]) this.datos.pres[mk] = {};
@@ -1263,6 +1591,28 @@
                 this.actualizar();
             },
             
+			editarPresupuesto(cat) {
+                const mk = this.getMes();
+                const monto = this.datos.pres[mk][cat];
+                document.getElementById('pres-cat').value = cat;
+                document.getElementById('pres-monto').value = monto;
+                // Eliminar sin confirmación ya que estamos editando
+                delete this.datos.pres[mk][cat];
+                this.guardar();
+                this.actualizar();
+                // Scroll hacia el formulario
+                document.getElementById('pres-monto').focus();
+            },
+            
+            eliminarPresupuesto(cat) {
+                if (confirm(`¿Eliminar el presupuesto de "${cat}"?`)) {
+                    const mk = this.getMes();
+                    delete this.datos.pres[mk][cat];
+                    this.guardar();
+                    this.actualizar();
+                }
+            },
+			
             calcularCuotasMes(fecha) {
                 const mes = fecha.getMonth();
                 const anio = fecha.getFullYear();
@@ -1378,7 +1728,7 @@
             },
             
             
-            mostrarAho() {
+			mostrarAho() {
                 const mk = this.getMes();
                 const metas = this.datos.metas[mk] || [];
                 const aho = this.datos.aho[mk] || [];
@@ -1386,11 +1736,25 @@
                 let html = '';
                 if (metas.length > 0) {
                     html += '<h4 style="color:var(--primary-dark);margin-bottom:10px;font-size:14px;">🎯 Metas</h4>';
-                    html += metas.map(m => `<div class="item"><div>${m.nom}</div><div class="item-amount">${this.formatearPesos(m.monto)}</div></div>`).join('');
+                    html += metas.map((m, i) => `
+                        <div class="item">
+                            <div style="flex:1;">${m.nom}</div>
+                            <div class="item-amount">${this.formatearPesos(m.monto)}</div>
+                            <button class="btn-info" onclick="app.editarMeta(${i})" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Editar">✏️</button>
+                            <button class="btn-danger" onclick="app.eliminarMeta(${i})" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Eliminar">🗑️</button>
+                        </div>
+                    `).join('');
                 }
                 if (aho.length > 0) {
                     html += '<h4 style="color:var(--primary-dark);margin:15px 0 10px;font-size:14px;">💰 Ahorros</h4>';
-                    html += aho.map(a => `<div class="item"><div>${a.nom}</div><div class="item-amount">${this.formatearPesos(a.monto)}</div></div>`).join('');
+                    html += aho.map((a, i) => `
+                        <div class="item">
+                            <div style="flex:1;">${a.nom}</div>
+                            <div class="item-amount">${this.formatearPesos(a.monto)}</div>
+                            <button class="btn-info" onclick="app.editarAhorro(${i})" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Editar">✏️</button>
+                            <button class="btn-danger" onclick="app.eliminarAhorro(${i})" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Eliminar">🗑️</button>
+                        </div>
+                    `).join('');
                 }
                 c.innerHTML = html || '<p style="text-align:center;color:var(--text-light);padding:20px;font-size:13px;">No hay registros</p>';
                 
@@ -1429,7 +1793,12 @@
                     if (porc > 100) { col = 'var(--danger)'; msg = '¡Superado!'; }
                     else if (porc > 90) { col = 'var(--danger)'; msg = '¡Cerca!'; }
                     else if (porc > 70) { col = 'var(--warning)'; msg = 'Cuidado'; }
-                    return `<div style="background:var(--bg);padding:15px;border-radius:10px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;font-size:13px;"><strong>${ico} ${cat}</strong><div style="text-align:right;"><div>Gastado: <strong style="color:${col};">${this.formatearPesos(gast)}</strong></div><div style="font-size:11px;color:var(--text-light);">Límite: ${this.formatearPesos(lim)}</div></div></div><div class="progress-bar" style="height:24px;"><div class="progress-fill" style="width:${porc}%;background:${col};font-size:11px;">${porc.toFixed(0)}%</div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span style="color:${col};font-weight:600;">${msg}</span><span style="color:${disp>=0?'var(--success)':'var(--danger)'};font-weight:600;">${disp>=0?'Disponible:':'Excedido:'} ${this.formatearPesos(Math.abs(disp))}</span></div></div>`;
+                    return `<div style="background:var(--bg);padding:15px;border-radius:10px;margin-bottom:10px;position:relative;">
+                        <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px;">
+                            <button class="btn-info" onclick="app.editarPresupuesto('${cat}')" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Editar">✏️</button>
+                            <button class="btn-danger" onclick="app.eliminarPresupuesto('${cat}')" style="padding:6px 10px;margin:0;font-size:12px;min-height:unset;" title="Eliminar">🗑️</button>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;font-size:13px;padding-right:100px;"><strong>${ico} ${cat}</strong><div style="text-align:right;"><div>Gastado: <strong style="color:${col};">${this.formatearPesos(gast)}</strong></div><div style="font-size:11px;color:var(--text-light);">Límite: ${this.formatearPesos(lim)}</div></div></div><div class="progress-bar" style="height:24px;"><div class="progress-fill" style="width:${porc}%;background:${col};font-size:11px;">${porc.toFixed(0)}%</div></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;"><span style="color:${col};font-weight:600;">${msg}</span><span style="color:${disp>=0?'var(--success)':'var(--danger)'};font-weight:600;">${disp>=0?'Disponible:':'Excedido:'} ${this.formatearPesos(Math.abs(disp))}</span></div></div>`;
                 }).join('');
             },
             
@@ -1690,5 +2059,83 @@
     
     <!-- Librería de encriptación -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+    // Carrusel con scroll y activación automática del submenú centrado
+    function autoActivateSubtabOnScroll(subtabsId) {
+        const subtabs = document.getElementById(subtabsId);
+        let ticking = false;
+        if (!subtabs) return;
+        subtabs.addEventListener('scroll', function() {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const subtabsRect = subtabs.getBoundingClientRect();
+                    let closest, minDist = Infinity;
+                    subtabs.querySelectorAll('.subtab').forEach(subtab => {
+                        const rect = subtab.getBoundingClientRect();
+                        // Distancia del centro de la subtab al centro del carrusel
+                        const dist = Math.abs(rect.left + rect.width/2 - (subtabsRect.left + subtabsRect.width/2));
+                        if (dist < minDist) {
+                            closest = subtab; minDist = dist;
+                        }
+                    });
+                    if (closest && !closest.classList.contains('active')) closest.click(); // dispara el cambio de submenú
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+    }
+    // Asociar al init del app (por cada subtabs que se active dinámicamente)
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(()=>{
+        document.querySelectorAll('.subtabs').forEach(sub => {
+          autoActivateSubtabOnScroll(sub.id);
+          // Si el tooltip no está, lo agrega
+          if(!sub.nextElementSibling || !sub.nextElementSibling.classList.contains('subtabs-tooltip')){
+            const tt = document.createElement('div');
+            tt.className = 'subtabs-tooltip';
+            tt.innerText = 'Desliza para ver más opciones';
+            sub.parentNode.insertBefore(tt, sub.nextSibling);
+          }
+        });
+      }, 150);
+    });
+    </script>
+    <script>
+    function setupCarruselYTooltipSubtabs(){
+      document.querySelectorAll('.subtabs').forEach(sub => {
+        // Elimina tooltips previos mal colocados (si los hay)
+        if(sub.previousElementSibling && sub.previousElementSibling.classList.contains('subtabs-tooltip')){
+          sub.previousElementSibling.remove();
+        }
+        // Inserta el tooltip justo antes del carrusel
+        const tt = document.createElement('div');
+        tt.className = 'subtabs-tooltip';
+        tt.innerText = 'Desliza para ver más opciones';
+        sub.parentNode.insertBefore(tt, sub);
+        // --- Scroll autoactivador solo si no existe ya
+        if(!sub._autoScrollSetup){
+          sub._autoScrollSetup = true;
+          sub.addEventListener('scroll', function() {
+            if(sub._ticking) return;
+            sub._ticking = true;
+            window.requestAnimationFrame(() => {
+              const subtabsRect = sub.getBoundingClientRect();
+              let closest, minDist = Infinity;
+              sub.querySelectorAll('.subtab').forEach(subtab => {
+                const rect = subtab.getBoundingClientRect();
+                const dist = Math.abs(rect.left + rect.width/2 - (subtabsRect.left + subtabsRect.width/2));
+                if (dist < minDist) { closest = subtab; minDist = dist; }
+              });
+              if (closest && !closest.classList.contains('active')) closest.click();
+              sub._ticking = false;
+            });
+          });
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', setupCarruselYTooltipSubtabs);
+    // Se recomienda llamar a setupCarruselYTooltipSubtabs() justo después de rearmar los subtabs, si son dinámicos.
+    </script>
 </body>
 </html>
